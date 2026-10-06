@@ -14,7 +14,6 @@ import AboutStrategy from './AboutStrategy';
 import RecentlyViewed from './RecentlyViewed';
 import Footer from './Footer';
 import SearchOverlay from './SearchOverlay';
-import QuickViewModal from './QuickViewModal';
 import WishlistDrawer from './WishlistDrawer';
 import { productsData } from '../data/products';
 
@@ -31,7 +30,6 @@ export default function StrategySportsHome({
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
-  const [quickViewProduct, setQuickViewProduct] = useState(null);
 
   // Initialize wishlist & recently viewed from localStorage
   useEffect(() => {
@@ -68,17 +66,21 @@ export default function StrategySportsHome({
     }
   };
 
-  // Track product view in recently viewed
+  // Track product view in recently viewed and navigate to product page
   const handleProductView = (product) => {
-    setQuickViewProduct(product);
     if (!product) return;
 
-    // Add to recently viewed without duplicate, limited to 6
+    // Add to recently viewed without duplicate, limited to 8
     const updated = [product, ...recentlyViewed.filter((p) => p.id !== product.id)].slice(0, 8);
     setRecentlyViewed(updated);
     try {
       localStorage.setItem('strategy_recently_viewed', JSON.stringify(updated));
     } catch (e) {}
+
+    if (navigateTo) {
+      navigateTo(`product-${product.id}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const wishlistedIds = wishlistItems.map((item) => item.id);
@@ -239,17 +241,6 @@ export default function StrategySportsHome({
         onClose={() => setIsSearchOpen(false)}
         onSelectProduct={(p) => handleProductView(p)}
         onSelectCategory={(c) => handleCategorySelect(c)}
-      />
-
-      {/* Interactive Quick View Modal */}
-      <QuickViewModal
-        product={quickViewProduct}
-        isOpen={!!quickViewProduct}
-        onClose={() => setQuickViewProduct(null)}
-        onAddToCart={onAddToCart}
-        onToggleWishlist={handleToggleWishlist}
-        isWishlisted={quickViewProduct ? wishlistedIds.includes(quickViewProduct.id) : false}
-        onOpenCart={onOpenCart}
       />
 
       {/* Wishlist Drawer */}

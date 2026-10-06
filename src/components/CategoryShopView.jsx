@@ -3,7 +3,6 @@ import { ArrowLeft, Filter, SlidersHorizontal, Search, Sparkles, Check } from 'l
 import Navbar from './Navbar';
 import Footer from './Footer';
 import ProductCard from './ProductCard';
-import QuickViewModal from './QuickViewModal';
 import WishlistDrawer from './WishlistDrawer';
 import SearchOverlay from './SearchOverlay';
 import { productsData } from '../data/products';
@@ -18,7 +17,6 @@ export default function CategoryShopView({
   const [selectedSport, setSelectedSport] = useState('all');
   const [selectedGender, setSelectedGender] = useState('all');
   const [sortBy, setSortBy] = useState('featured');
-  const [quickViewProduct, setQuickViewProduct] = useState(null);
   const [wishlistItems, setWishlistItems] = useState([]);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -44,6 +42,14 @@ export default function CategoryShopView({
   };
 
   const wishlistedIds = wishlistItems.map((i) => i.id);
+
+  const handleSelectProduct = (product) => {
+    if (!product) return;
+    if (navigateTo) {
+      navigateTo(`product-${product.id}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   // Compute filtered products
   const filteredProducts = useMemo(() => {
@@ -184,7 +190,7 @@ export default function CategoryShopView({
                 key={product.id}
                 product={product}
                 onAddToCart={onAddToCart}
-                onQuickView={(p) => setQuickViewProduct(p)}
+                onSelectProduct={handleSelectProduct}
                 onToggleWishlist={handleToggleWishlist}
                 isWishlisted={wishlistedIds.includes(product.id)}
               />
@@ -215,16 +221,6 @@ export default function CategoryShopView({
       <Footer onNavigate={navigateTo} />
 
       {/* Modals & Overlays */}
-      <QuickViewModal
-        product={quickViewProduct}
-        isOpen={!!quickViewProduct}
-        onClose={() => setQuickViewProduct(null)}
-        onAddToCart={onAddToCart}
-        onToggleWishlist={handleToggleWishlist}
-        isWishlisted={quickViewProduct ? wishlistedIds.includes(quickViewProduct.id) : false}
-        onOpenCart={onOpenCart}
-      />
-
       <WishlistDrawer
         isOpen={isWishlistOpen}
         onClose={() => setIsWishlistOpen(false)}
@@ -234,14 +230,14 @@ export default function CategoryShopView({
           if (onAddToCart) onAddToCart(item);
           handleToggleWishlist(item);
         }}
-        onQuickView={(p) => setQuickViewProduct(p)}
+        onSelectProduct={handleSelectProduct}
         navigateTo={navigateTo}
       />
 
       <SearchOverlay
         isOpen={isSearchOpen}
         onClose={() => setIsSearchOpen(false)}
-        onSelectProduct={(p) => setQuickViewProduct(p)}
+        onSelectProduct={(p) => handleSelectProduct(p)}
         onSelectCategory={(cat) => setSelectedSport(cat.toLowerCase())}
       />
 

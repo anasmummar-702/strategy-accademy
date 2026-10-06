@@ -116,13 +116,7 @@ export default function ProShopSection({ onAddToCart, openCart }) {
                   <span className="badge badge-pink">{prod.badge}</span>
                 </div>
 
-                <button
-                  onClick={() => setSelectedProduct(prod)}
-                  className="absolute bottom-4 right-4 p-2.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white hover:text-cyan-400 hover:border-cyan-400 transition-all"
-                  title="Quick View Details"
-                >
-                  <Eye className="w-4 h-4" />
-                </button>
+
               </div>
 
               {/* Product Info */}

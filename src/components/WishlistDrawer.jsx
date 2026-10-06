@@ -10,6 +10,7 @@ export default function WishlistDrawer({
   wishlistItems = [],
   onRemoveFromWishlist,
   onMoveToCart,
+  onSelectProduct,
   onQuickView,
   navigateTo
 }) {
@@ -147,7 +148,9 @@ export default function WishlistDrawer({
                     <h4 
                       onClick={() => {
                         onClose();
-                        if (onQuickView) onQuickView(item);
+                        if (onSelectProduct) onSelectProduct(item);
+                        else if (onQuickView) onQuickView(item);
+                        else if (navigateTo) navigateTo(`product-${item.id}`);
                       }}
                       className="text-xs sm:text-sm font-bold text-slate-900 truncate leading-snug hover:text-blue-600 transition-colors cursor-pointer"
                       title={item.name}
@@ -180,21 +183,8 @@ export default function WishlistDrawer({
                         )}
                       </div>
 
-                      {/* Action buttons: Move to Cart, Quick View, Trash */}
+                      {/* Action buttons: Move to Cart, Trash */}
                       <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => {
-                            if (onQuickView) {
-                              onClose();
-                              onQuickView(item);
-                            }
-                          }}
-                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-50 text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
-                          title="Quick View Details"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-
                         <button
                           onClick={() => {
                             if (onMoveToCart) onMoveToCart(item);

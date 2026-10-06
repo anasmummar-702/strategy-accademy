@@ -22,6 +22,7 @@ import ContactUsPage from './components/ContactUsPage';
 import ShippingPolicyPage from './components/ShippingPolicyPage';
 import FaqsPage from './components/FaqsPage';
 import CareersPage from './components/CareersPage';
+import ProductDetailPage from './components/ProductDetailPage';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
@@ -196,6 +197,9 @@ export default function App() {
   // Helper to test if activeTab is the new sports shop homepage
   const isShopHome = activeTab === 'shop-home';
 
+  // Helper to test if activeTab is a dedicated product detail page
+  const isProductView = activeTab === 'product' || activeTab.startsWith('product-');
+
   return (
     <div className="min-h-screen flex flex-col bg-transparent text-white selection:bg-blue-600 selection:text-white font-['Plus_Jakarta_Sans',sans-serif]">
       
@@ -203,6 +207,7 @@ export default function App() {
       {activeTab !== 'home' && 
        !isShopView &&
        !isShopHome &&
+       !isProductView &&
        activeTab !== 'trial' && 
        activeTab !== 'trial-skating' && 
        activeTab !== 'trial-basketball' && 
@@ -250,7 +255,21 @@ export default function App() {
           />
         )}
 
-        {/* 3. DEDICATED CATEGORY / SHOP / GENDER CATALOG */}
+        {/* 3. DEDICATED FULL PRODUCT DETAIL PAGE */}
+        {isProductView && (
+          <ProductDetailPage
+            productId={activeTab.startsWith('product-') ? activeTab.replace('product-', '') : null}
+            navigateTo={navigateTo}
+            onAddToCart={addToCart}
+            totalCartCount={totalCartCount}
+            onOpenCart={() => setIsCartOpen(true)}
+            wishlistItems={wishlistItems}
+            onToggleWishlist={handleToggleWishlist}
+            onOpenWishlist={() => setIsWishlistOpen(true)}
+          />
+        )}
+
+        {/* 4. DEDICATED CATEGORY / SHOP / GENDER CATALOG */}
         {isShopView && (
           <CategoryShopView
             filterType={activeTab}
