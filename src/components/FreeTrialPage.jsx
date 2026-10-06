@@ -329,10 +329,6 @@ export default function FreeTrialPage({ navigateTo }) {
       }
       setCardError('');
     } else {
-      if (!bankSenderName.trim() || !bankTxRef.trim()) {
-        setBankError('Please enter sender account name and transaction reference ID');
-        return;
-      }
       setBankError('');
     }
 
@@ -359,7 +355,7 @@ export default function FreeTrialPage({ navigateTo }) {
         email: emailToUse,
         phone: phoneToUse,
         ageGroup,
-        skateStyle: skateStyle === 'quad' ? 'Classic Quad Skates' : 'Inline Speed Skates',
+        skateStyle: 'Inline Speed Skates',
         skateSize: hasOwnSkates === 'yes' ? `${skateSize} (Own Skates Brought)` : `${skateSize} (Rental Skates)`,
         hasExperience: hasSkatingExperience === 'yes' ? 'Yes (Has Skating Experience)' : 'No (First Timer)',
         hasSkates: hasOwnSkates === 'yes' ? 'Yes (Own Skates)' : 'No (Rental Skates Provided)',
@@ -373,7 +369,7 @@ export default function FreeTrialPage({ navigateTo }) {
         paymentMethod: paymentMethod === 'card' ? 'Credit / Debit Card' : 'UAE Direct Bank Transfer',
         paymentInfo: paymentMethod === 'card' 
           ? `Card •••• ${cardNumber.replace(/\s/g, '').slice(-4) || '4242'}`
-          : `Bank Transfer (Ref: ${bankTxRef.trim() || 'TRX-982314'})`
+          : 'UAE Direct Bank Transfer (Emirates NBD)'
       };
 
       setTicketData(pass);
@@ -1407,29 +1403,6 @@ export default function FreeTrialPage({ navigateTo }) {
                   </div>
                 </div>
 
-                {/* Skate Style */}
-                <div className="booking-input-group">
-                  <label className="booking-label">
-                    Preferred Skate Style *
-                  </label>
-                  <div className="booking-style-grid">
-                    <div
-                      onClick={() => setSkateStyle('quad')}
-                      className={`booking-style-card ${skateStyle === 'quad' ? 'active' : ''}`}
-                    >
-                      <div className="booking-style-title">Classic Quad Skates</div>
-                      <div className="booking-style-desc">4-wheel stability & dance</div>
-                    </div>
-
-                    <div
-                      onClick={() => setSkateStyle('inline')}
-                      className={`booking-style-card ${skateStyle === 'inline' ? 'active' : ''}`}
-                    >
-                      <div className="booking-style-title">Inline Skates</div>
-                      <div className="booking-style-desc">Speed, fitness & glide</div>
-                    </div>
-                  </div>
-                </div>
 
                 {/* Shoe / Skate Size Custom Dropdown */}
                 <div className="booking-input-group" style={{ position: 'relative' }}>
@@ -1654,59 +1627,9 @@ export default function FreeTrialPage({ navigateTo }) {
                         </div>
                       </div>
                       <div className="text-[11px] text-blue-800 mt-2 font-medium">
-                        Transfer <strong>30.00 AED</strong> and enter your reference ID below for instant pass activation.
+                        Transfer <strong>30.00 AED</strong> using the official bank details above for pass activation.
                       </div>
                     </div>
-
-                    <div className="booking-input-group">
-                      <label className="booking-label">Sender Account Name *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. John Doe"
-                        value={bankSenderName}
-                        onChange={(e) => {
-                          setBankSenderName(e.target.value);
-                          if (bankError) setBankError('');
-                        }}
-                        className="booking-input"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="booking-input-group">
-                        <label className="booking-label">Sender Bank Name *</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. Emirates NBD / ADCB"
-                          value={bankSenderBank}
-                          onChange={(e) => setBankSenderBank(e.target.value)}
-                          className="booking-input"
-                        />
-                      </div>
-
-                      <div className="booking-input-group">
-                        <label className="booking-label">Transaction Ref / TRX *</label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="e.g. TRX-884920"
-                          value={bankTxRef}
-                          onChange={(e) => {
-                            setBankTxRef(e.target.value);
-                            if (bankError) setBankError('');
-                          }}
-                          className="booking-input"
-                        />
-                      </div>
-                    </div>
-
-                    {bankError && (
-                      <div className="text-xs text-red-600 font-bold p-2 rounded-lg bg-red-50 border border-red-200">
-                        ⚠️ {bankError}
-                      </div>
-                    )}
                   </div>
                 )}
 

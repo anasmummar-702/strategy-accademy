@@ -28,7 +28,7 @@ export default function TrialSelectionPage({ navigateTo, onSelectSkating }) {
       <div className="absolute top-0 inset-x-0 h-96 bg-gradient-to-b from-blue-50/70 via-blue-50/20 to-transparent pointer-events-none" />
 
       {/* Top Bar Navigation */}
-      <div className="w-full max-w-2xl mb-6 sm:mb-8 flex items-center justify-between z-10 px-1">
+      <div className="w-full max-w-2xl mb-6 sm:mb-8 flex items-center justify-start z-10 px-1">
         <button
           onClick={() => {
             if (navigateTo) navigateTo('home');
@@ -39,10 +39,6 @@ export default function TrialSelectionPage({ navigateTo, onSelectSkating }) {
           <ArrowLeft className="w-4 h-4 text-white group-hover:-translate-x-1 transition-transform" />
           <span>Back</span>
         </button>
-
-        <span className="text-xs font-extrabold tracking-wider text-[#0035f5] bg-blue-50 px-3.5 py-1.5 rounded-full border border-blue-200 uppercase">
-          Select Sport
-        </span>
       </div>
 
       {/* Main Content Area */}
