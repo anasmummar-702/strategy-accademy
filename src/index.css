@@ -1757,6 +1757,36 @@ select:focus {
   border-radius: 9999px;
 }
 
+@keyframes questionSlideInRight {
+  0% {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes questionSlideInLeft {
+  0% {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.question-slide-in-right {
+  animation: questionSlideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.question-slide-in-left {
+  animation: questionSlideInLeft 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 .booking-input-group {
   margin-bottom: 14px;
 }

@@ -103,6 +103,9 @@ export default function FreeTrialPage({ navigateTo }) {
   const [preCheckStep, setPreCheckStep] = useState(1); // 1 = Question 1 (Experience), 2 = Question 2 (Skates)
   const [hasSkatingExperience, setHasSkatingExperience] = useState('no'); // 'yes' | 'no'
   const [hasOwnSkates, setHasOwnSkates] = useState('no'); // 'yes' | 'no'
+  const [questionSlideDir, setQuestionSlideDir] = useState('right'); // 'right' | 'left'
+  const [isAnswering, setIsAnswering] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState(null);
 
   // Step 1: Contact & Date & Location
   const [selectedLocation, setSelectedLocation] = useState('Al Nahyan');
@@ -245,7 +248,47 @@ export default function FreeTrialPage({ navigateTo }) {
 
     // Open directly to Question 1 of the assessment
     setPreCheckStep(1);
+    setQuestionSlideDir('right');
+    setIsAnswering(false);
+    setSelectedAnswer(null);
     setBookingStep(0);
+  };
+
+  const handleAnswerQuestion1 = (answer) => {
+    if (isAnswering) return;
+    setIsAnswering(true);
+    setSelectedAnswer(answer);
+    setHasSkatingExperience(answer);
+    setQuestionSlideDir('right');
+    setTimeout(() => {
+      setPreCheckStep(2);
+      setIsAnswering(false);
+      setSelectedAnswer(null);
+    }, 380);
+  };
+
+  const handleBackToQuestion1 = () => {
+    if (isAnswering) return;
+    setQuestionSlideDir('left');
+    setPreCheckStep(1);
+    setSelectedAnswer(null);
+    setIsAnswering(false);
+  };
+
+  const handleAnswerQuestion2 = (answer) => {
+    if (isAnswering) return;
+    setIsAnswering(true);
+    setSelectedAnswer(answer);
+    setHasOwnSkates(answer);
+    if (answer === 'no') {
+      setSelectedLocation('Al Nahyan');
+      handleLocationChange('Al Nahyan');
+    }
+    setTimeout(() => {
+      setBookingStep(1);
+      setIsAnswering(false);
+      setSelectedAnswer(null);
+    }, 380);
   };
 
   const handleNextToCandidate = (e) => {
@@ -791,28 +834,99 @@ export default function FreeTrialPage({ navigateTo }) {
 
               <button
                 type="button"
-                onClick={() => setBookingStep(null)}
+                onClick={() => {
+                  setBookingStep(null);
+                  setIsAnswering(false);
+                  setSelectedAnswer(null);
+                }}
                 className="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
+            {/* TWO-STEP VISUAL PROGRESS STEPPER & UPCOMING QUESTION INDICATOR */}
+            {bookingStep === 0 && (
+              <div className="mb-4 bg-slate-50/90 p-3 rounded-2xl border border-slate-200/80 shadow-xs">
+                <div className="flex items-center justify-between text-[11px] font-bold mb-2">
+                  <div className={`flex items-center gap-1.5 transition-colors ${
+                    preCheckStep === 1 ? 'text-blue-600 font-extrabold' : 'text-emerald-600'
+                  }`}>
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${
+                      preCheckStep > 1 
+                        ? 'bg-emerald-500 text-white shadow-xs' 
+                        : 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-200'
+                    }`}>
+                      {preCheckStep > 1 ? '✓' : '1'}
+                    </span>
+                    <span>Question 1: Experience</span>
+                  </div>
+
+                  <div className="flex items-center text-slate-300">
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </div>
+
+                  <div className={`flex items-center gap-1.5 transition-colors ${
+                    preCheckStep === 2 ? 'text-blue-600 font-extrabold' : 'text-slate-400'
+                  }`}>
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${
+                      preCheckStep === 2 
+                        ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-200' 
+                        : 'bg-slate-200 text-slate-500'
+                    }`}>
+                      2
+                    </span>
+                    <span>Question 2: Skates</span>
+                  </div>
+                </div>
+
+                {/* Animated Visual Progress Bar Track */}
+                <div className="w-full bg-slate-200/80 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-500 ease-out"
+                    style={{ 
+                      width: isAnswering && preCheckStep === 1 
+                        ? '85%' 
+                        : preCheckStep === 1 
+                        ? '50%' 
+                        : '100%' 
+                    }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between mt-1.5 text-[10px] text-slate-500 font-medium">
+                  <span>
+                    {preCheckStep === 1 ? 'Step 1 of 2 in progress' : '✓ Question 1 completed'}
+                  </span>
+                  <span className="text-blue-600 font-bold">
+                    {preCheckStep === 1 ? '👉 Next coming: Skates & Equipment' : 'Final Question before Schedule'}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* STEP 0: ONE QUESTION AT A TIME (CLICK YES/NO TO AUTO-ADVANCE) */}
             {bookingStep === 0 && (
-              <div className="py-2 animate-fadeIn">
+              <div className="py-1">
                 {preCheckStep === 1 ? (
                   /* QUESTION 1: Does your child have skating experience? */
-                  <div className="text-center py-2 sm:py-4">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4 border border-blue-100 shadow-sm">
+                  <div 
+                    key="question-1"
+                    className={`text-center py-2 sm:py-3 ${questionSlideDir === 'left' ? 'question-slide-in-left' : 'question-slide-in-right'}`}
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3 border border-blue-100 shadow-xs">
                       <Sparkles className="w-6 h-6 text-blue-600" />
+                    </div>
+
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[11px] font-bold text-blue-700 mb-2">
+                      <span>Question 1 of 2</span>
                     </div>
 
                     <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-['Outfit'] leading-snug max-w-sm mx-auto mb-2">
                       Does your child have any skating experience?
                     </h2>
 
-                    <p className="text-xs sm:text-sm text-slate-500 max-w-xs mx-auto mb-7 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-slate-500 max-w-xs mx-auto mb-6 leading-relaxed">
                       Helps our certified coach tailor 1:1 drills to their comfort & balance level.
                     </p>
 
@@ -820,49 +934,93 @@ export default function FreeTrialPage({ navigateTo }) {
                     <div className="grid grid-cols-2 gap-3.5 max-w-xs mx-auto">
                       <button
                         type="button"
-                        onClick={() => {
-                          setHasSkatingExperience('yes');
-                          setPreCheckStep(2);
-                        }}
-                        className="group flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-white border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 hover:shadow-lg transition-all duration-200 active:scale-95 cursor-pointer"
+                        disabled={isAnswering}
+                        onClick={() => handleAnswerQuestion1('yes')}
+                        className={`group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer ${
+                          selectedAnswer === 'yes'
+                            ? 'bg-blue-50 border-2 border-blue-600 shadow-md ring-2 ring-blue-400/40 scale-[1.02]'
+                            : 'bg-white border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 hover:shadow-lg active:scale-95'
+                        }`}
                       >
-                        <span className="text-2xl font-black text-slate-900 group-hover:text-blue-600 transition-colors font-['Outfit']">
+                        {selectedAnswer === 'yes' && (
+                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs animate-scaleIn">
+                            <Check className="w-3 h-3" />
+                          </div>
+                        )}
+                        <span className={`text-2xl font-black font-['Outfit'] transition-colors ${
+                          selectedAnswer === 'yes' ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-600'
+                        }`}>
                           Yes
                         </span>
-                        <span className="text-[11px] font-semibold text-slate-400 group-hover:text-blue-600 mt-1">
+                        <span className={`text-[11px] font-semibold mt-1 transition-colors ${
+                          selectedAnswer === 'yes' ? 'text-blue-600' : 'text-slate-400 group-hover:text-blue-600'
+                        }`}>
                           Has skated before
                         </span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => {
-                          setHasSkatingExperience('no');
-                          setPreCheckStep(2);
-                        }}
-                        className="group flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-white border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 hover:shadow-lg transition-all duration-200 active:scale-95 cursor-pointer"
+                        disabled={isAnswering}
+                        onClick={() => handleAnswerQuestion1('no')}
+                        className={`group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer ${
+                          selectedAnswer === 'no'
+                            ? 'bg-blue-50 border-2 border-blue-600 shadow-md ring-2 ring-blue-400/40 scale-[1.02]'
+                            : 'bg-white border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 hover:shadow-lg active:scale-95'
+                        }`}
                       >
-                        <span className="text-2xl font-black text-slate-900 group-hover:text-blue-600 transition-colors font-['Outfit']">
+                        {selectedAnswer === 'no' && (
+                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs animate-scaleIn">
+                            <Check className="w-3 h-3" />
+                          </div>
+                        )}
+                        <span className={`text-2xl font-black font-['Outfit'] transition-colors ${
+                          selectedAnswer === 'no' ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-600'
+                        }`}>
                           No
                         </span>
-                        <span className="text-[11px] font-semibold text-slate-400 group-hover:text-blue-600 mt-1">
+                        <span className={`text-[11px] font-semibold mt-1 transition-colors ${
+                          selectedAnswer === 'no' ? 'text-blue-600' : 'text-slate-400 group-hover:text-blue-600'
+                        }`}>
                           First timer / beginner
                         </span>
                       </button>
                     </div>
+
+                    {/* Feedback when answering vs preview banner */}
+                    {isAnswering && selectedAnswer ? (
+                      <div className="mt-6 flex items-center justify-center gap-2 text-xs font-bold text-blue-600 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+                        <span>Saving answer... Loading Question 2 (Skates & Equipment)</span>
+                      </div>
+                    ) : (
+                      <div className="mt-6 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-50/80 border border-blue-200/80 text-[11px] font-medium text-slate-700 shadow-2xs">
+                        <span className="font-bold text-blue-600">Up next:</span>
+                        <span>Question 2 will ask if your child has skates</span>
+                        <ChevronRight className="w-3.5 h-3.5 text-blue-600" />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   /* QUESTION 2: Does your child have skates? */
-                  <div className="text-center py-2 sm:py-4">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4 border border-blue-100 shadow-sm">
+                  <div 
+                    key="question-2"
+                    className={`text-center py-2 sm:py-3 ${questionSlideDir === 'left' ? 'question-slide-in-left' : 'question-slide-in-right'}`}
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3 border border-blue-100 shadow-xs">
                       <ShieldCheck className="w-6 h-6 text-blue-600" />
+                    </div>
+
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-700 mb-2">
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Question 2 of 2 • Final Pre-Check</span>
                     </div>
 
                     <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-['Outfit'] leading-snug max-w-sm mx-auto mb-2">
                       Does your child have their own skates?
                     </h2>
 
-                    <p className="text-xs sm:text-sm text-slate-500 max-w-xs mx-auto mb-7 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-slate-500 max-w-xs mx-auto mb-6 leading-relaxed">
                       Free sanitized rental skates & protective pad kits are provided exclusively at Al Nahyan.
                     </p>
 
@@ -870,50 +1028,77 @@ export default function FreeTrialPage({ navigateTo }) {
                     <div className="grid grid-cols-2 gap-3.5 max-w-xs mx-auto">
                       <button
                         type="button"
-                        onClick={() => {
-                          setHasOwnSkates('yes');
-                          setBookingStep(1);
-                        }}
-                        className="group flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-white border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 hover:shadow-lg transition-all duration-200 active:scale-95 cursor-pointer"
+                        disabled={isAnswering}
+                        onClick={() => handleAnswerQuestion2('yes')}
+                        className={`group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer ${
+                          selectedAnswer === 'yes'
+                            ? 'bg-blue-50 border-2 border-blue-600 shadow-md ring-2 ring-blue-400/40 scale-[1.02]'
+                            : 'bg-white border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 hover:shadow-lg active:scale-95'
+                        }`}
                       >
-                        <span className="text-2xl font-black text-slate-900 group-hover:text-blue-600 transition-colors font-['Outfit']">
+                        {selectedAnswer === 'yes' && (
+                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs animate-scaleIn">
+                            <Check className="w-3 h-3" />
+                          </div>
+                        )}
+                        <span className={`text-2xl font-black font-['Outfit'] transition-colors ${
+                          selectedAnswer === 'yes' ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-600'
+                        }`}>
                           Yes
                         </span>
-                        <span className="text-[11px] font-semibold text-slate-400 group-hover:text-blue-600 mt-1">
+                        <span className={`text-[11px] font-semibold mt-1 transition-colors ${
+                          selectedAnswer === 'yes' ? 'text-blue-600' : 'text-slate-400 group-hover:text-blue-600'
+                        }`}>
                           Will bring own skates
                         </span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => {
-                          setHasOwnSkates('no');
-                          setSelectedLocation('Al Nahyan');
-                          handleLocationChange('Al Nahyan');
-                          setBookingStep(1);
-                        }}
-                        className="group flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl bg-white border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 hover:shadow-lg transition-all duration-200 active:scale-95 cursor-pointer"
+                        disabled={isAnswering}
+                        onClick={() => handleAnswerQuestion2('no')}
+                        className={`group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer ${
+                          selectedAnswer === 'no'
+                            ? 'bg-blue-50 border-2 border-blue-600 shadow-md ring-2 ring-blue-400/40 scale-[1.02]'
+                            : 'bg-white border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 hover:shadow-lg active:scale-95'
+                        }`}
                       >
-                        <span className="text-2xl font-black text-slate-900 group-hover:text-blue-600 transition-colors font-['Outfit']">
+                        {selectedAnswer === 'no' && (
+                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs animate-scaleIn">
+                            <Check className="w-3 h-3" />
+                          </div>
+                        )}
+                        <span className={`text-2xl font-black font-['Outfit'] transition-colors ${
+                          selectedAnswer === 'no' ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-600'
+                        }`}>
                           No
                         </span>
-                        <span className="text-[11px] font-semibold text-slate-400 group-hover:text-blue-600 mt-1">
+                        <span className={`text-[11px] font-semibold mt-1 transition-colors ${
+                          selectedAnswer === 'no' ? 'text-blue-600' : 'text-slate-400 group-hover:text-blue-600'
+                        }`}>
                           Need rental skates
                         </span>
                       </button>
                     </div>
 
-                    {/* Back to Question 1 button */}
-                    <div className="mt-7 flex items-center justify-center">
-                      <button
-                        type="button"
-                        onClick={() => setPreCheckStep(1)}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors py-1.5 px-3.5 rounded-lg hover:bg-slate-100"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                        <span>Back to Question 1</span>
-                      </button>
-                    </div>
+                    {isAnswering && selectedAnswer ? (
+                      <div className="mt-6 flex items-center justify-center gap-2 text-xs font-bold text-blue-600 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+                        <span>Ready! Opening Session Schedule & Branch Selection...</span>
+                      </div>
+                    ) : (
+                      /* Back to Question 1 button */
+                      <div className="mt-6 flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={handleBackToQuestion1}
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors py-1.5 px-3.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                          <span>Back to Question 1</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
