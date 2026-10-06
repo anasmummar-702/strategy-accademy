@@ -510,304 +510,220 @@ export default function BasketballScratchModal({ isOpen, onClose, onRegister }) 
         />
       ))}
 
-      {/* Super Scratch Card Dialog */}
+      {/* Super Scratch Card (Exact match - only the card itself) */}
       <div 
         className="ice-scratch-dialog"
         onClick={(e) => e.stopPropagation()}
         style={{
-          padding: '20px',
+          position: 'relative',
+          width: '100%',
+          maxWidth: '380px',
+          minHeight: isRevealed ? 'auto' : '280px',
+          borderRadius: '24px',
+          backgroundColor: '#ffffff',
+          overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          gap: '16px',
-          background: '#ffffff'
+          alignItems: 'center',
+          justifyContent: 'center',
+          border: 'none',
+          boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.4), 0 0 35px rgba(56, 189, 248, 0.15)'
         }}
       >
-        {/* Top Controls Row */}
+        {/* Subtle Floating Close Button */}
+        <button
+          onClick={onClose}
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            width: '30px',
+            height: '30px',
+            borderRadius: '50%',
+            backgroundColor: 'rgba(15, 23, 42, 0.08)',
+            color: '#0f172a',
+            border: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 30,
+            backdropFilter: 'blur(4px)'
+          }}
+          title="Close"
+        >
+          <X style={{ width: '16px', height: '16px' }} />
+        </button>
+
+        {/* Revealed Content Underneath (Revealed when card is scratched) */}
         <div style={{
+          width: '100%',
+          minHeight: '280px',
+          padding: '24px 20px',
+          textAlign: 'center',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 2px'
+          justifyContent: 'center',
+          gap: '12px',
+          background: 'linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%)',
+          borderRadius: '24px',
+          boxSizing: 'border-box'
         }}>
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',
-            padding: '4px 12px',
+            padding: '4px 14px',
             borderRadius: '9999px',
-            backgroundColor: '#eff6ff',
-            color: '#0284c7',
+            backgroundColor: '#ecfdf5',
+            color: '#059669',
             fontSize: '11px',
             fontWeight: 900,
-            letterSpacing: '0.08em',
             textTransform: 'uppercase',
-            border: '1px solid #bfdbfe'
+            border: '1px solid #a7f3d0'
           }}>
-            <Sparkles style={{ width: '13px', height: '13px', color: '#0284c7' }} />
-            <span>SUPER SCRATCH CARD</span>
+            <Trophy style={{ width: '14px', height: '14px', color: '#eab308' }} />
+            <span>VIP OFFER UNLOCKED!</span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: '#f8fafc',
-                color: soundEnabled ? '#0284c7' : '#94a3b8',
-                border: '1px solid #e2e8f0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
-              title={soundEnabled ? 'Mute' : 'Enable Audio'}
-            >
-              {soundEnabled ? <Volume2 style={{ width: '15px', height: '15px' }} /> : <VolumeX style={{ width: '15px', height: '15px' }} />}
-            </button>
+          <h4 style={{
+            fontFamily: 'var(--font-heading)',
+            fontSize: '20px',
+            fontWeight: 900,
+            color: '#0f172a',
+            lineHeight: 1.2,
+            margin: 0
+          }}>
+            2 MONTH BASKETBALL COACHING
+          </h4>
 
-            <button
-              onClick={onClose}
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                backgroundColor: '#f8fafc',
-                color: '#64748b',
-                border: '1px solid #e2e8f0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
-              title="Close"
-            >
-              <X style={{ width: '16px', height: '16px' }} />
-            </button>
-          </div>
-        </div>
-
-        {/* SCRATCH CARD CONTAINER */}
-        <div style={{
-          position: 'relative',
-          width: '100%',
-          height: '280px',
-          borderRadius: '20px',
-          backgroundColor: '#f8fafc',
-          overflow: 'hidden',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '16px',
-          boxShadow: 'inset 0 1px 4px rgba(0, 0, 0, 0.05)'
-        }}>
-
-          {/* REVEALED VOUCHER TICKET (Underneath) */}
+          {/* Price display - Clean white card style */}
           <div style={{
+            padding: '8px 16px',
+            borderRadius: '14px',
+            backgroundColor: '#f8fafc',
+            border: '1px solid #e2e8f0',
             width: '100%',
-            height: '100%',
-            textAlign: 'center',
+            maxWidth: '280px',
             display: 'flex',
-            flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
-            gap: '12px',
-            background: 'linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%)',
-            borderRadius: '16px',
-            padding: '16px'
+            justifyContent: 'space-around'
           }}>
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '4px 14px',
-              borderRadius: '9999px',
-              backgroundColor: '#ecfdf5',
-              color: '#059669',
-              fontSize: '11px',
-              fontWeight: 900,
-              textTransform: 'uppercase',
-              border: '1px solid #a7f3d0'
-            }}>
-              <Trophy style={{ width: '14px', height: '14px', color: '#eab308' }} />
-              <span>VIP OFFER UNLOCKED!</span>
+            <div>
+              <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Regular</span>
+              <span style={{ fontSize: '14px', color: '#94a3b8', textDecoration: 'line-through', fontWeight: 700 }}>750 AED</span>
             </div>
 
-            <h4 style={{
-              fontFamily: 'var(--font-heading)',
-              fontSize: '20px',
-              fontWeight: 900,
-              color: '#0f172a',
-              lineHeight: 1.2,
-              margin: 0
-            }}>
-              2 MONTH BASKETBALL COACHING
-            </h4>
+            <div style={{ fontSize: '18px', color: '#0284c7', fontWeight: 900 }}>➔</div>
 
-            {/* Price display - Clean white card style */}
-            <div style={{
-              padding: '8px 16px',
-              borderRadius: '14px',
-              backgroundColor: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              width: '100%',
-              maxWidth: '280px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-around'
-            }}>
-              <div>
-                <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Regular</span>
-                <span style={{ fontSize: '14px', color: '#94a3b8', textDecoration: 'line-through', fontWeight: 700 }}>750 AED</span>
-              </div>
-
-              <div style={{ fontSize: '18px', color: '#0284c7', fontWeight: 900 }}>➔</div>
-
-              <div>
-                <span style={{ fontSize: '10px', color: '#0284c7', textTransform: 'uppercase', fontWeight: 800, display: 'block' }}>VIP Deal</span>
-                <span style={{ fontSize: '28px', color: '#0284c7', fontWeight: 900, fontFamily: 'var(--font-heading)', lineHeight: 1 }}>500 AED</span>
-              </div>
-            </div>
-
-            <div style={{
-              padding: '4px 14px',
-              borderRadius: '9999px',
-              backgroundColor: '#0284c7',
-              color: '#ffffff',
-              fontSize: '11px',
-              fontWeight: 900,
-              letterSpacing: '0.02em'
-            }}>
-              🎉 YOU SAVE 250 AED!
+            <div>
+              <span style={{ fontSize: '10px', color: '#0284c7', textTransform: 'uppercase', fontWeight: 800, display: 'block' }}>VIP Deal</span>
+              <span style={{ fontSize: '28px', color: '#0284c7', fontWeight: 900, fontFamily: 'var(--font-heading)', lineHeight: 1 }}>500 AED</span>
             </div>
           </div>
 
-          {/* CANVAS SCRATCH COVER */}
-          {!isRevealed && (
-            <canvas
-              ref={canvasRef}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                cursor: 'pointer',
-                zIndex: 10,
-                touchAction: 'none',
-                userSelect: 'none',
-                borderRadius: '20px',
-                opacity: scratchedPercent >= 28 ? 0 : 1,
-                pointerEvents: scratchedPercent >= 28 ? 'none' : 'auto',
-                transition: 'opacity 0.4s ease'
-              }}
-            />
-          )}
-
-        </div>
-
-        {/* Under-Card Helper Row */}
-        {!isRevealed ? (
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 4px',
-            fontSize: '12px',
-            color: '#64748b',
-            fontWeight: 700
+            padding: '4px 14px',
+            borderRadius: '9999px',
+            backgroundColor: '#0284c7',
+            color: '#ffffff',
+            fontSize: '11px',
+            fontWeight: 900,
+            letterSpacing: '0.02em'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Clock style={{ width: '14px', height: '14px', color: '#0284c7' }} />
-              <span>Scratch area to unlock</span>
-            </div>
-
-            <button
-              onClick={triggerReveal}
-              style={{
-                color: '#0284c7',
-                textDecoration: 'underline',
-                fontWeight: 800,
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: 0
-              }}
-            >
-              Quick reveal
-            </button>
+            🎉 YOU SAVE 250 AED!
           </div>
-        ) : (
-          /* Action Bar when Revealed */
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            
-            {/* Promo Code Copy */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '10px 14px',
-              borderRadius: '14px',
-              backgroundColor: '#f8fafc',
-              border: '1px dashed #cbd5e1'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Tag style={{ width: '15px', height: '15px', color: '#0284c7' }} />
-                <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700 }}>Code:</span>
-                <span style={{ fontSize: '14px', fontWeight: 900, color: '#0f172a', fontFamily: 'monospace' }}>HOOPS450</span>
+
+          {/* Action elements shown when revealed */}
+          {isRevealed && (
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '8px 12px',
+                borderRadius: '12px',
+                backgroundColor: '#f8fafc',
+                border: '1px dashed #cbd5e1'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Tag style={{ width: '14px', height: '14px', color: '#0284c7' }} />
+                  <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700 }}>Code:</span>
+                  <span style={{ fontSize: '13px', fontWeight: 900, color: '#0f172a', fontFamily: 'monospace' }}>HOOPS450</span>
+                </div>
+
+                <button
+                  onClick={copyPromoCode}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '8px',
+                    backgroundColor: '#eff6ff',
+                    border: '1px solid #bfdbfe',
+                    color: '#0284c7',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  {copiedCode ? <Check style={{ width: '12px', height: '12px', color: '#16a34a' }} /> : <Copy style={{ width: '12px', height: '12px' }} />}
+                  <span>{copiedCode ? 'Copied!' : 'Copy Code'}</span>
+                </button>
               </div>
 
               <button
-                onClick={copyPromoCode}
+                onClick={() => {
+                  onClose();
+                  onRegister();
+                }}
                 style={{
-                  padding: '6px 14px',
-                  borderRadius: '10px',
-                  backgroundColor: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  color: '#0284c7',
-                  fontSize: '11px',
-                  fontWeight: 800,
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(90deg, #0284c7 0%, #2563eb 100%)',
+                  color: '#ffffff',
+                  fontWeight: 900,
+                  fontSize: '13px',
+                  letterSpacing: '0.02em',
+                  border: 'none',
+                  boxShadow: '0 8px 25px rgba(2, 132, 199, 0.4)',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px'
+                  justifyContent: 'center',
+                  gap: '6px'
                 }}
               >
-                {copiedCode ? <Check style={{ width: '13px', height: '13px', color: '#16a34a' }} /> : <Copy style={{ width: '13px', height: '13px' }} />}
-                <span>{copiedCode ? 'Copied!' : 'Copy Code'}</span>
+                <span>CLAIM VIP PASS (500 AED)</span>
+                <ArrowRight style={{ width: '15px', height: '15px' }} />
               </button>
             </div>
+          )}
+        </div>
 
-            {/* Primary Action Button */}
-            <button
-              onClick={() => {
-                onClose();
-                onRegister();
-              }}
-              style={{
-                width: '100%',
-                padding: '14px',
-                borderRadius: '16px',
-                background: 'linear-gradient(90deg, #0284c7 0%, #2563eb 100%)',
-                color: '#ffffff',
-                fontWeight: 900,
-                fontSize: '13px',
-                letterSpacing: '0.02em',
-                border: 'none',
-                boxShadow: '0 8px 25px rgba(2, 132, 199, 0.4)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px'
-              }}
-            >
-              <span>CLAIM VIP PASS (500 AED)</span>
-              <ArrowRight style={{ width: '16px', height: '16px' }} />
-            </button>
-          </div>
+        {/* The Scratch Card Canvas (Completely covers the card before reveal) */}
+        {!isRevealed && (
+          <canvas
+            ref={canvasRef}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              cursor: 'pointer',
+              zIndex: 10,
+              touchAction: 'none',
+              userSelect: 'none',
+              borderRadius: '24px',
+              opacity: scratchedPercent >= 28 ? 0 : 1,
+              pointerEvents: scratchedPercent >= 28 ? 'none' : 'auto',
+              transition: 'opacity 0.4s ease'
+            }}
+          />
         )}
-
       </div>
     </div>,
     document.body
