@@ -82,25 +82,25 @@ export default function QuickViewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto">
       
       {/* Modal Container */}
       <div 
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 text-slate-900 my-auto flex flex-col lg:flex-row max-h-[92vh]"
+        className="quick-view-modal-container relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-slate-200 text-slate-900 my-auto"
       >
         
         {/* Floating Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-30 p-2.5 rounded-full bg-white/90 hover:bg-slate-100 text-slate-500 hover:text-slate-900 border border-slate-200 shadow-md transition-colors cursor-pointer"
+          className="sticky lg:absolute top-3.5 right-3.5 lg:top-4 lg:right-4 z-30 self-end float-right -mb-10 mr-3.5 lg:mr-0 p-2.5 rounded-full bg-white/90 hover:bg-slate-100 text-slate-500 hover:text-slate-900 border border-slate-200 shadow-md transition-colors cursor-pointer"
           aria-label="Close dialog"
         >
           <X className="w-5 h-5" />
         </button>
 
         {/* ================= LEFT COLUMN: MEDIA & TRUST PERKS ================= */}
-        <div className="lg:w-1/2 bg-slate-50/70 p-6 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-100 overflow-y-auto">
+        <div className="quick-view-left-column lg:w-1/2 bg-slate-50/70 p-5 sm:p-8 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-slate-100">
           
           <div>
             {/* Top Badges Strip */}
@@ -190,7 +190,7 @@ export default function QuickViewModal({
         </div>
 
         {/* ================= RIGHT COLUMN: PRODUCT INTELLIGENCE & CTAs ================= */}
-        <div className="lg:w-1/2 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto">
+        <div className="quick-view-right-column lg:w-1/2 p-5 sm:p-8 flex flex-col justify-between">
           
           <div className="space-y-4">
             {/* Breadcrumb Navigation */}

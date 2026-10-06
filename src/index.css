@@ -1168,6 +1168,35 @@ select:focus {
 
 .overflow-hidden { overflow: hidden; }
 .overflow-y-auto { overflow-y: auto; }
+.overflow-visible { overflow: visible; }
+
+/* Quick View Unified Mobile Modal Layout */
+.quick-view-modal-container {
+  display: flex;
+  flex-direction: column;
+  max-height: 92vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.quick-view-left-column,
+.quick-view-right-column {
+  overflow: visible !important;
+  height: auto;
+}
+
+@media (min-width: 1024px) {
+  .quick-view-modal-container {
+    flex-direction: row;
+    overflow: hidden;
+  }
+  .quick-view-left-column,
+  .quick-view-right-column {
+    overflow-y: auto !important;
+    height: 100%;
+  }
+}
+
 .object-cover { object-fit: cover; }
 .cursor-pointer { cursor: pointer; }
 .whitespace-nowrap { white-space: nowrap; }
