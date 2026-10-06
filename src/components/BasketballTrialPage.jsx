@@ -303,18 +303,6 @@ export default function BasketballTrialPage({ navigateTo }) {
                 </div>
               </div>
 
-              {/* Feature Pills */}
-              <div className="trial-feature-pills">
-                <span className="trial-feature-pill">
-                  <Check className="w-3.5 h-3.5 text-blue-600" /> 1:1 & Team FIBA Coaching
-                </span>
-                <span className="trial-feature-pill">
-                  <Check className="w-3.5 h-3.5 text-blue-600" /> Official Molten Pro Match Balls
-                </span>
-                <span className="trial-feature-pill">
-                  <Check className="w-3.5 h-3.5 text-blue-600" /> Al Nahyan Arena • 6:00 PM
-                </span>
-              </div>
 
               {/* SECTION: WHAT YOU'LL MASTER */}
               <div className="trial-card trial-master-section">

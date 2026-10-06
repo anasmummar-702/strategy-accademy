@@ -601,18 +601,6 @@ export default function FreeTrialPage({ navigateTo }) {
                 </div>
               </div>
 
-              {/* Feature Pills */}
-              <div className="trial-feature-pills">
-                <span className="trial-feature-pill">
-                  <Check className="w-3.5 h-3.5 text-blue-600" /> 1:1 Certified Coach
-                </span>
-                <span className="trial-feature-pill">
-                  <Check className="w-3.5 h-3.5 text-blue-600" /> Sanitized Rental Skates
-                </span>
-                <span className="trial-feature-pill">
-                  <Check className="w-3.5 h-3.5 text-blue-600" /> Free Safety Pad Kit
-                </span>
-              </div>
 
               {/* SECTION: WHAT YOU'LL MASTER */}
               <div className="trial-card trial-master-section">
