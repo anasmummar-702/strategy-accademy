@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Share2, MoreVertical, Calendar, GraduationCap, ShoppingBag, Trophy, MessageSquare, Check, Copy, ExternalLink, ChevronDown, ChevronUp, Sparkles, Info } from 'lucide-react';
+import { X, Share2, ChevronRight, Calendar, GraduationCap, ShoppingBag, Trophy, MessageSquare, Check, Copy, ExternalLink, ChevronDown, ChevronUp, Sparkles, Info } from 'lucide-react';
 
 // White vector basketball icon
 function BasketballIcon({ className = "w-6 h-6" }) {
@@ -47,9 +47,7 @@ function SkateIcon({ className = "w-6 h-6" }) {
 
 export default function HomeSection({ navigateTo, openTrialModal }) {
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [cardMenuOpen, setCardMenuOpen] = useState(null);
   const [currentBanner, setCurrentBanner] = useState(0);
 
   // Pops up immediately on first scroll down
@@ -229,7 +227,7 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
           <span className="text-white">StrategySkateAcademy</span>
         </div>
 
-        {/* Right Action Icons: Share & 3-Dots Options */}
+        {/* Right Action Icons: Share */}
         <div className="flex items-center gap-2">
           {/* Working Share Button */}
           <button 
@@ -238,15 +236,6 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
             title="Share Strategy Skate Academy"
           >
             <Share2 className="w-4 h-4" />
-          </button>
-
-          {/* Working Three-Dots Options Menu */}
-          <button 
-            onClick={() => setIsMenuOpen(true)}
-            className="app-bar-btn" 
-            title="More Options"
-          >
-            <MoreVertical className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -323,50 +312,11 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
                         )}
                       </div>
 
-                      {/* Right Action Menu Dots */}
-                      <div 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCardMenuOpen(cardMenuOpen === item.id ? null : item.id);
-                        }}
-                        className="pill-card-more hover:text-cyan-500 hover:scale-110 transition-all p-2 rounded-full"
-                        title="Card Details"
-                      >
-                        <MoreVertical className="w-5 h-5" />
+                      {/* Clean Right Arrow Indicator */}
+                      <div className="text-white/60 group-hover:text-cyan-300 group-hover:translate-x-1 transition-all mr-1 relative z-10">
+                        <ChevronRight className="w-5 h-5" />
                       </div>
                     </button>
-
-                    {/* Quick Card Context Popup if 3-dots on card is clicked */}
-                    {cardMenuOpen === item.id && (
-                      <div className="absolute right-0 top-16 z-30 bg-[#0f172a] border border-cyan-400/40 rounded-2xl p-3 shadow-2xl text-xs space-y-2 min-w-[200px] animate-fadeIn">
-                        <div className="font-bold text-white border-b border-white/10 pb-1.5 flex items-center justify-between">
-                          <span>{item.title}</span>
-                          <button onClick={() => setCardMenuOpen(null)} className="text-gray-400 hover:text-white">
-                            <X className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setCardMenuOpen(null);
-                            item.action();
-                          }}
-                          className="w-full text-left py-1.5 px-2 rounded-lg bg-cyan-500/10 text-cyan-300 font-semibold hover:bg-cyan-500/20 flex items-center justify-between"
-                        >
-                          <span>Open Section</span>
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            handleCopyLink();
-                            setCardMenuOpen(null);
-                          }}
-                          className="w-full text-left py-1.5 px-2 rounded-lg hover:bg-white/5 text-gray-300 flex items-center justify-between"
-                        >
-                          <span>Copy Link</span>
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -454,121 +404,6 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
                     <span>Copy</span>
                   </>
                 )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* =========================================================================
-         WORKING THREE-DOTS OPTIONS MENU MODAL
-         ========================================================================= */}
-      {isMenuOpen && (
-        <div className="modal-overlay">
-          <div className="options-menu-sheet">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-2">
-              <div className="flex items-center gap-2">
-                <Info className="w-4 h-4 text-cyan-400" />
-                <span className="text-sm font-bold font-['Outfit']">Strategy Skate Hub</span>
-              </div>
-              <button 
-                onClick={() => setIsMenuOpen(false)}
-                className="p-1 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-1">
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  openTrialModal();
-                }}
-                className="options-menu-item"
-              >
-                <Calendar className="w-4 h-4 text-cyan-400" />
-                <span>Book Trial Session</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  navigateTo('basketball');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="options-menu-item"
-              >
-                <BasketballIcon className="w-4 h-4 text-cyan-400" />
-                <span>Basketball Academy</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  navigateTo('skating');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="options-menu-item"
-              >
-                <SkateIcon className="w-4 h-4 text-cyan-400" />
-                <span>Skating Academy</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  navigateTo('programs');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="options-menu-item"
-              >
-                <GraduationCap className="w-4 h-4 text-pink-400" />
-                <span>Courses & Classes</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  navigateTo('shop-home');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="options-menu-item"
-              >
-                <ShoppingBag className="w-4 h-4 text-amber-400" />
-                <span>Browse Pro Shop & Sports Gear</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  navigateTo('skating');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="options-menu-item"
-              >
-                <Trophy className="w-4 h-4 text-emerald-400" />
-                <span>Meet Certified Coaches</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  handleCopyLink();
-                }}
-                className="options-menu-item"
-              >
-                <Copy className="w-4 h-4 text-blue-400" />
-                <span>{copied ? 'Copied Profile Link!' : 'Copy Profile Link'}</span>
-              </button>
-            </div>
-
-            <div className="pt-3 border-t border-white/10 mt-2">
-              <button
-                onClick={() => setIsMenuOpen(false)}
-                className="w-full text-center py-2 text-xs font-semibold text-gray-400 hover:text-white"
-              >
-                Close Menu
               </button>
             </div>
           </div>
