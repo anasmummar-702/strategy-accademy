@@ -3708,40 +3708,19 @@ select:focus {
 .ice-scratch-dialog {
   position: relative;
   width: 100%;
-  max-width: 440px;
+  max-width: 420px;
   margin: auto;
   border-radius: 28px;
-  background: linear-gradient(180deg, #091336 0%, #060e28 50%, #030718 100%);
-  border: 2px solid rgba(56, 189, 248, 0.6);
-  box-shadow: 0 0 60px rgba(56, 189, 248, 0.35), 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  background: #ffffff;
+  border: none !important;
+  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.4), 0 0 35px rgba(56, 189, 248, 0.15);
   overflow: hidden;
-  color: #ffffff;
+  color: #0f172a;
 }
 
-.ice-scratch-notch-left {
-  position: absolute;
-  left: -14px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #020617;
-  border-right: 2px solid rgba(56, 189, 248, 0.7);
-  z-index: 20;
-}
-
+.ice-scratch-notch-left,
 .ice-scratch-notch-right {
-  position: absolute;
-  right: -14px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #020617;
-  border-left: 2px solid rgba(56, 189, 248, 0.7);
-  z-index: 20;
+  display: none !important;
 }
 
 /* ==========================================================================
