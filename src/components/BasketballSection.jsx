@@ -23,10 +23,15 @@ import {
   ShieldCheck,
   MessageSquare,
   Check,
-  MapPin
+  MapPin,
+  ChevronLeft,
+  X,
+  Maximize2
 } from 'lucide-react';
 import BasketballScratchModal from './BasketballScratchModal';
 import BasketballTrialModal from './BasketballTrialModal';
+import { getBasketballGallery } from '../utils/academyGalleriesData';
+import { getBasketballPackage } from '../utils/academyPackagesData';
 
 // ─── Scroll Reveal Wrapper ────────────────────────────────────────────────────
 function ScrollReveal({ children, delay = 0, direction = 'up', className = '' }) {
@@ -73,6 +78,54 @@ export default function BasketballSection({ navigateTo, openTrialModal }) {
   const [selectedReviewCategory, setSelectedReviewCategory] = useState('all');
   const [isScratchModalOpen, setIsScratchModalOpen] = useState(false);
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
+
+  // Dynamic Basketball Package State
+  const [bbPackage, setBbPackage] = useState(getBasketballPackage);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setBbPackage(getBasketballPackage());
+    };
+    window.addEventListener('strategy_packages_updated', handleUpdate);
+    return () => window.removeEventListener('strategy_packages_updated', handleUpdate);
+  }, []);
+
+  // Basketball Gallery Carousel State
+  const [galleryImages, setGalleryImages] = useState(getBasketballGallery);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const [isAutoPlay, setIsAutoPlay] = useState(true);
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  // Auto-advance carousel
+  useEffect(() => {
+    if (!isAutoPlay || !galleryImages.length) return;
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % galleryImages.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [isAutoPlay, galleryImages.length]);
+
+  const handlePrevSlide = () => {
+    setIsAutoPlay(false);
+    setCurrentSlide((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
+  };
+
+  const handleNextSlide = () => {
+    setIsAutoPlay(false);
+    setCurrentSlide((prev) => (prev + 1) % galleryImages.length);
+  };
+
+  // Sync when admin updates galleries
+  useEffect(() => {
+    const handleUpdate = (e) => {
+      if (!e.detail || e.detail.sport === 'basketball' || e.detail.sport === 'all') {
+        setGalleryImages(getBasketballGallery());
+      }
+    };
+    window.addEventListener('strategy_gallery_updated', handleUpdate);
+    return () => window.removeEventListener('strategy_gallery_updated', handleUpdate);
+  }, []);
 
   // Heading pops up automatically on page open.
   // When user scrolls, description appears in pure text only.
@@ -1350,27 +1403,41 @@ export default function BasketballSection({ navigateTo, openTrialModal }) {
                   <div className="bb-exact-price-container">
                     {/* Regular Price */}
                     <div className="bb-exact-reg-price">
-                      <span className="bb-exact-strikethrough">AED 750</span>
+                      <span className="bb-exact-strikethrough">
+                        AED {bbPackage.originalPriceAED || (Number(bbPackage.priceAED) + 250)}
+                      </span>
                       <span className="bb-exact-reg-label">Regular Price</span>
                     </div>
 
                     {/* Main Price */}
                     <div className="bb-exact-main-price-row">
                       <span className="bb-exact-currency">AED</span>
-                      <span className="bb-exact-amount">500</span>
-                      <span className="bb-exact-period">/ 2 Months</span>
+                      <span className="bb-exact-amount">{bbPackage.priceAED}</span>
+                      <span className="bb-exact-period">/ {bbPackage.validityLabel || '2 Months'}</span>
                     </div>
 
                     {/* Save Badge */}
                     <div className="bb-exact-save-pill">
                       <Tag style={{ width: '13px', height: '13px', color: '#10b981' }} />
-                      <span>SAVE AED 250 (33% OFF)</span>
+                      <span>
+                        SAVE AED {Math.max(0, (bbPackage.originalPriceAED || (Number(bbPackage.priceAED) + 250)) - Number(bbPackage.priceAED))} (
+                        {Math.round(
+                          ((Math.max(0, (bbPackage.originalPriceAED || (Number(bbPackage.priceAED) + 250)) - Number(bbPackage.priceAED))) /
+                            (bbPackage.originalPriceAED || (Number(bbPackage.priceAED) + 250))) *
+                            100
+                        )}
+                        % OFF)
+                      </span>
                     </div>
 
                     {/* Per Class Pill */}
                     <div className="bb-exact-per-class-pill">
                       <span className="bb-exact-bolt">⚡</span>
-                      <span>Just <strong className="bb-exact-gold-text">AED 31.25</strong> per class (16 Classes)</span>
+                      <span>
+                        Just <strong className="bb-exact-gold-text">
+                          AED {((Number(bbPackage.priceAED) || 500) / (Number(bbPackage.classesCount) || 16)).toFixed(2)}
+                        </strong> per class ({bbPackage.classesCount || 16} Classes)
+                      </span>
                     </div>
 
                     {/* Claim Package Button */}
@@ -1425,31 +1492,164 @@ export default function BasketballSection({ navigateTo, openTrialModal }) {
       </div>{/* end upper content sections container */}
 
       {/* =========================================================================
-          STRATEGY TEAM HUDDLE BANNER (FULL SCREEN WIDTH EDGE-TO-EDGE FILL)
+          INTERACTIVE BASKETBALL ACADEMY PHOTO & TRAINING GALLERY WORKSPACE
           ========================================================================= */}
-      <section className="bb-quote-fullscreen-banner relative w-full overflow-hidden bg-[#030718] flex items-center justify-center py-0 my-0 border-none min-h-[380px] sm:min-h-[480px] md:min-h-[580px] lg:min-h-[680px] xl:min-h-[750px]">
-        {/* Ambient Blurred Background Fill to seamlessly extend banner edge-to-edge */}
-        <div
-          className="absolute inset-0 z-0 bg-cover bg-center filter blur-2xl opacity-35 scale-125 pointer-events-none transition-all duration-700"
-          style={{ backgroundImage: `url('/images/basketball_team_huddle_banner.jpg')` }}
-        />
+      <section id="basketball-gallery" className="relative z-10 py-12 sm:py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+        <div className="relative rounded-[32px] p-6 sm:p-10 border border-cyan-500/30 shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-xl bg-gradient-to-b from-slate-900/90 via-slate-950/95 to-[#030718] overflow-hidden">
+          {/* Ambient cyan & blue court glow effects */}
+          <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-cyan-500/15 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-blue-600/15 blur-3xl pointer-events-none" />
 
-        {/* Ambient cyan & blue court radial glow matching basketball theme */}
-        <div className="absolute bottom-0 left-0 right-0 h-[450px] bg-[radial-gradient(ellipse_85%_75%_at_50%_100%,rgba(14,165,233,0.25)_0%,rgba(3,105,161,0.1)_50%,transparent_85%)] pointer-events-none z-[1]" />
+          {/* Header & Controls */}
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-black uppercase tracking-widest text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-full">
+                  AL NAHYAN ARENA MOMENTS
+                </span>
+                <span className="text-[11px] font-bold text-slate-400">
+                  {galleryImages.length} High-Res Photos
+                </span>
+              </div>
+              <h3 className="font-['Unbounded',sans-serif] text-2xl sm:text-4xl font-black text-white mt-2.5 tracking-tight uppercase">
+                PHOTO &amp; TRAINING GALLERY
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl">
+                Explore our hardwood championship court, pro FIBA training sessions, and athlete development moments. Click any picture to view in full screen.
+              </p>
+            </div>
 
-        {/* Top and Bottom Seamless Blending Gradients */}
-        <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-b from-[#030718] via-[#030718]/80 to-transparent pointer-events-none z-[2]" />
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#030718] via-[#030718]/80 to-transparent pointer-events-none z-[2]" />
+            {/* Navigation Arrows */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={handlePrevSlide}
+                className="w-11 h-11 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 flex items-center justify-center text-white shadow-lg active:scale-95 transition-all cursor-pointer group"
+                aria-label="Previous Slide"
+              >
+                <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+              </button>
+              <button
+                type="button"
+                onClick={handleNextSlide}
+                className="w-11 h-11 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 flex items-center justify-center text-white shadow-lg active:scale-95 transition-all cursor-pointer group"
+                aria-label="Next Slide"
+              >
+                <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
+          </div>
 
-        {/* Main Banner Image Container - Full Width & Height Fill on both Mobile and Laptop */}
-        <div className="relative z-10 w-full h-full flex items-center justify-center min-h-[380px] sm:min-h-[480px] md:min-h-[580px] lg:min-h-[680px] xl:min-h-[750px]">
-          <img
-            src="/images/basketball_team_huddle_banner.jpg"
-            alt="Strategy Basketball Academy Team Huddle"
-            className="w-full h-full min-h-[380px] sm:min-h-[480px] md:min-h-[580px] lg:min-h-[680px] xl:min-h-[750px] object-cover object-center block transform scale-100 transition-transform duration-700"
-          />
+          {/* Active Carousel Dual Display (Featured Active Slide + Next Slide) */}
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Slide A (Active) */}
+            <div 
+              onClick={() => setSelectedImage(galleryImages[currentSlide]?.src)}
+              className="relative rounded-2xl overflow-hidden shadow-2xl border border-cyan-400/40 aspect-[16/10] sm:aspect-[4/3] bg-slate-950 group cursor-pointer transition-all hover:border-cyan-300 ring-1 ring-cyan-500/20"
+            >
+              <img 
+                src={galleryImages[currentSlide]?.src} 
+                alt={galleryImages[currentSlide]?.title} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
+              
+              {/* Zoom hint icon in top right */}
+              <div className="absolute top-4 right-4 p-2 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 text-white opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all">
+                <Maximize2 className="w-4 h-4 text-cyan-400" />
+              </div>
+
+              <div className="absolute bottom-5 left-5 right-5 text-white">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-cyan-500 text-slate-950 px-3 py-1 rounded-full shadow-md inline-block">
+                  {galleryImages[currentSlide]?.badge || 'Strategy Basketball Academy'}
+                </span>
+                <h4 className="font-['Unbounded',sans-serif] text-lg sm:text-xl font-bold mt-2.5 text-white drop-shadow-md">
+                  {galleryImages[currentSlide]?.title}
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 line-clamp-2">
+                  {galleryImages[currentSlide]?.desc}
+                </p>
+              </div>
+            </div>
+
+            {/* Slide B (Next Preview on Desktop) */}
+            <div 
+              onClick={() => setSelectedImage(galleryImages[(currentSlide + 1) % galleryImages.length]?.src)}
+              className="relative rounded-2xl overflow-hidden shadow-xl border border-white/10 aspect-[16/10] sm:aspect-[4/3] bg-slate-950 group cursor-pointer hidden md:block transition-all hover:border-cyan-400/50"
+            >
+              <img 
+                src={galleryImages[(currentSlide + 1) % galleryImages.length]?.src} 
+                alt={galleryImages[(currentSlide + 1) % galleryImages.length]?.title} 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
+              
+              <div className="absolute top-4 right-4 p-2 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 text-white opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all">
+                <Maximize2 className="w-4 h-4 text-cyan-400" />
+              </div>
+
+              <div className="absolute bottom-5 left-5 right-5 text-white">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-white/15 backdrop-blur-md text-cyan-300 border border-cyan-400/30 px-3 py-1 rounded-full shadow-md inline-block">
+                  {galleryImages[(currentSlide + 1) % galleryImages.length]?.badge || 'Strategy Basketball Academy'}
+                </span>
+                <h4 className="font-['Unbounded',sans-serif] text-lg sm:text-xl font-bold mt-2.5 text-white drop-shadow-md">
+                  {galleryImages[(currentSlide + 1) % galleryImages.length]?.title}
+                </h4>
+                <p className="text-xs sm:text-sm text-slate-300 mt-1 line-clamp-2">
+                  {galleryImages[(currentSlide + 1) % galleryImages.length]?.desc}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Thumbnails Row (Grid of 8) */}
+          <div className="relative z-10 grid grid-cols-4 sm:grid-cols-8 gap-2.5 sm:gap-3.5 mt-6">
+            {galleryImages.map((img, idx) => (
+              <button
+                key={img.id || idx}
+                type="button"
+                onClick={() => {
+                  setIsAutoPlay(false);
+                  setCurrentSlide(idx);
+                }}
+                className={`relative rounded-xl overflow-hidden aspect-square border-2 transition-all cursor-pointer group ${
+                  currentSlide === idx 
+                    ? 'border-cyan-400 ring-4 ring-cyan-400/30 scale-105 shadow-[0_0_15px_rgba(56,189,248,0.4)]' 
+                    : 'border-white/10 opacity-70 hover:opacity-100 hover:border-white/30'
+                }`}
+                title={img.title}
+              >
+                <img src={img.src} alt={img.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                <div className={`absolute inset-0 transition-opacity ${currentSlide === idx ? 'bg-cyan-500/10' : 'bg-black/20 group-hover:bg-transparent'}`} />
+              </button>
+            ))}
+          </div>
+
         </div>
       </section>
+
+      {/* Lightbox Modal for Full Image View */}
+      {selectedImage && (
+        <div 
+          onClick={() => setSelectedImage(null)}
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-pointer animate-fadeIn"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="relative max-w-5xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl border border-white/20 bg-slate-950"
+          >
+            <img src={selectedImage} alt="Full resolution view" className="w-full h-full max-h-[85vh] object-contain block" />
+            <button 
+              type="button"
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black border border-white/20 transition-all cursor-pointer hover:scale-105"
+              aria-label="Close Preview"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* =========================================================================
           SLEEK BLACK & DEEP BLUE GRADIENT REVIEWS SECTION

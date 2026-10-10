@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, CheckCircle2, ChevronRight, User, Mail, Phone, Calendar } from 'lucide-react';
+import { X, CheckCircle2, ChevronRight, User, Mail, Phone, Calendar, AlertCircle } from 'lucide-react';
+import { format10DigitPhone, validate10DigitPhone, validateGmail } from '../utils/validation';
 
 export default function BasketballTrialModal({ isOpen, onClose }) {
   const [formData, setFormData] = useState({
@@ -10,11 +11,28 @@ export default function BasketballTrialModal({ isOpen, onClose }) {
     phone: ''
   });
   const [submitted, setSubmitted] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const emailVal = validateGmail(formData.email);
+    if (!emailVal.isValid) {
+      setEmailError(emailVal.error);
+      return;
+    }
+    setEmailError('');
+
+    const phoneVal = validate10DigitPhone(formData.phone);
+    if (!phoneVal.isValid) {
+      setPhoneError(phoneVal.error);
+      return;
+    }
+    setPhoneError('');
+
     // Simulate submission
     setSubmitted(true);
     setTimeout(() => {
@@ -124,33 +142,84 @@ export default function BasketballTrialModal({ isOpen, onClose }) {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#93c5fd', marginBottom: '6px' }}>Gmail (Email Address)</label>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#93c5fd', marginBottom: '6px' }}>
+                  Gmail Address (@gmail.com only) *
+                </label>
                 <div style={{ position: 'relative' }}>
                   <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
                   <input 
                     required 
                     type="email" 
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    onChange={(e) => {
+                      setFormData({...formData, email: e.target.value});
+                      if (emailError) setEmailError('');
+                    }}
                     placeholder="example@gmail.com"
-                    style={{ width: '100%', padding: '12px 12px 12px 36px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} 
+                    style={{ width: '100%', padding: '12px 12px 12px 36px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.05)', border: emailError ? '1.5px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} 
                   />
                 </div>
+                {emailError && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f87171', fontSize: '11px', marginTop: '4px', fontWeight: 600 }}>
+                    <AlertCircle size={12} />
+                    <span>{emailError}</span>
+                  </div>
+                )}
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#93c5fd', marginBottom: '6px' }}>UAE Number</label>
-                <div style={{ position: 'relative' }}>
-                  <Phone size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#93c5fd' }}>
+                    Mobile (9 Digits) *
+                  </label>
+                  <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                    {formData.phone.length}/9
+                  </span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: phoneError ? '1.5px solid #ef4444' : '1px solid rgba(255, 255, 255, 0.1)',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{
+                    padding: '12px 14px',
+                    background: 'rgba(56, 189, 248, 0.15)',
+                    borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#38bdf8',
+                    fontWeight: 800,
+                    fontSize: '13px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <Phone size={14} color="#38bdf8" />
+                    <span>+971</span>
+                  </div>
                   <input 
                     required 
-                    type="tel" 
+                    type="tel"
+                    maxLength={9}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    placeholder="+971 50 123 4567"
-                    style={{ width: '100%', padding: '12px 12px 12px 36px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.05)', border: '1px solid rgba(255, 255, 255, 0.1)', color: '#fff', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }} 
+                    onChange={(e) => {
+                      const digits = format10DigitPhone(e.target.value);
+                      setFormData({...formData, phone: digits});
+                      if (phoneError) setPhoneError('');
+                    }}
+                    placeholder="50 123 4567"
+                    style={{ flex: 1, padding: '12px', background: 'transparent', border: 'none', color: '#fff', fontSize: '14px', outline: 'none' }} 
                   />
                 </div>
+                {phoneError && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#f87171', fontSize: '11px', marginTop: '4px', fontWeight: 600 }}>
+                    <AlertCircle size={12} />
+                    <span>{phoneError}</span>
+                  </div>
+                )}
               </div>
 
               <button 

@@ -162,11 +162,11 @@ export default function SearchOverlay({
                       </div>
                       <div className="text-right shrink-0">
                         <div className="text-sm font-black text-white">
-                          ${p.price.toFixed(2)}
+                          ${(typeof p.price === 'number' ? p.price : (parseFloat(p.price) || 0)).toFixed(2)}
                         </div>
                         {p.oldPrice && (
                           <div className="text-xs text-slate-500 line-through">
-                            ${p.oldPrice.toFixed(2)}
+                            ${(typeof p.oldPrice === 'number' ? p.oldPrice : (parseFloat(p.oldPrice) || 0)).toFixed(2)}
                           </div>
                         )}
                       </div>

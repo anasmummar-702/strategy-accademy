@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { faqsData } from '../data/faqs';
-import { Mail, Phone, MapPin, Clock, Send, ChevronDown, CheckCircle2, MessageSquare, Sparkles } from 'lucide-react';
+import { Mail, Phone, MapPin, Clock, Send, ChevronDown, CheckCircle2, MessageSquare, Sparkles, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { format10DigitPhone, validate10DigitPhone, validateGmail } from '../utils/validation';
 
 export default function ContactSection() {
   const [activeFaq, setActiveFaq] = useState(null);
@@ -15,6 +16,8 @@ export default function ContactSection() {
     subject: 'General Inquiry',
     message: ''
   });
+  const [phoneError, setPhoneError] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   const categories = ['All', 'General & Trial', 'Programs & Equipment', 'Pro Shop & Shipping', 'Facility & Safety'];
 
@@ -24,6 +27,23 @@ export default function ContactSection() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const emailVal = validateGmail(form.email);
+    if (!emailVal.isValid) {
+      setEmailError(emailVal.error);
+      return;
+    }
+    setEmailError('');
+
+    if (form.phone) {
+      const phoneVal = validate10DigitPhone(form.phone);
+      if (!phoneVal.isValid) {
+        setPhoneError(phoneVal.error);
+        return;
+      }
+    }
+    setPhoneError('');
+
     setSubmitted(true);
     try {
       confetti({
@@ -94,31 +114,64 @@ export default function ContactSection() {
 
                 <div>
                   <label className="block text-xs font-bold text-cyan-400 uppercase tracking-wider mb-1">
-                    Email Address
+                    Gmail Address (@gmail.com only) *
                   </label>
                   <input
                     type="email"
                     required
-                    placeholder="alex@example.com"
+                    placeholder="alex@gmail.com"
                     value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400"
+                    onChange={(e) => {
+                      setForm({ ...form, email: e.target.value });
+                      if (emailError) setEmailError('');
+                    }}
+                    className={`w-full bg-white/5 border rounded-xl px-4 py-3 text-sm text-white focus:outline-none ${emailError ? 'border-rose-500' : 'border-white/15 focus:border-cyan-400'}`}
                   />
+                  {emailError && (
+                    <div className="flex items-center gap-1 text-rose-400 text-xs mt-1 font-semibold">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{emailError}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-cyan-400 uppercase tracking-wider mb-1">
-                    Phone Number
-                  </label>
-                  <input
-                    type="tel"
-                    placeholder="+1 (555) 234-5678"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                    className="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400"
-                  />
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                      Phone Number (9 Digits)
+                    </label>
+                    <span className="text-[10px] text-gray-400">
+                      {form.phone.length}/9
+                    </span>
+                  </div>
+                  <div className={`flex items-center bg-white/5 border rounded-xl overflow-hidden ${phoneError ? 'border-rose-500' : 'border-white/15 focus-within:border-cyan-400'}`}>
+                    <div className="flex items-center gap-1 px-3 py-3 bg-white/10 text-cyan-400 font-bold text-xs border-r border-white/10 shrink-0">
+                      <Phone className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>+971</span>
+                    </div>
+                    <input
+                      type="tel"
+                      maxLength={9}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="50 123 4567"
+                      value={form.phone}
+                      onChange={(e) => {
+                        const digits = format10DigitPhone(e.target.value);
+                        setForm({ ...form, phone: digits });
+                        if (phoneError) setPhoneError('');
+                      }}
+                      className="w-full bg-transparent px-3 py-3 text-sm text-white focus:outline-none"
+                    />
+                  </div>
+                  {phoneError && (
+                    <div className="flex items-center gap-1 text-rose-400 text-xs mt-1 font-semibold">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{phoneError}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div>

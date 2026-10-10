@@ -5,6 +5,9 @@ import {
   Sparkles, Lock, ArrowLeft, ChevronRight, Phone
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { productsData } from '../data/products';
+import { publicApi } from '../services/api';
+import { format10DigitPhone, validate10DigitPhone, validateGmail } from '../utils/validation';
 
 export default function CartDrawer({ 
   isOpen, 
@@ -13,6 +16,7 @@ export default function CartDrawer({
   updateQuantity, 
   removeItem, 
   clearCart,
+  onAddToCart,
   navigateTo 
 }) {
   const [promoCode, setPromoCode] = useState('');
@@ -32,6 +36,8 @@ export default function CartDrawer({
     paymentMethod: 'card',
     cardNumber: '•••• •••• •••• 4242'
   });
+  const [checkoutPhoneError, setCheckoutPhoneError] = useState('');
+  const [checkoutEmailError, setCheckoutEmailError] = useState('');
 
   if (!isOpen) return null;
 
@@ -75,9 +81,52 @@ export default function CartDrawer({
     setPromoError('');
   };
 
-  const handleCheckoutSubmit = (e) => {
+  const handleCheckoutSubmit = async (e) => {
     e.preventDefault();
+
+    const emailVal = validateGmail(checkoutForm.email);
+    if (!emailVal.isValid) {
+      setCheckoutEmailError(emailVal.error);
+      return;
+    }
+    setCheckoutEmailError('');
+
+    const phoneVal = validate10DigitPhone(checkoutForm.phone);
+    if (!phoneVal.isValid) {
+      setCheckoutPhoneError(phoneVal.error);
+      return;
+    }
+    setCheckoutPhoneError('');
+
     const orderId = 'STR-' + Math.floor(100000 + Math.random() * 900000);
+    const orderData = {
+      customerName: checkoutForm.name || 'Valued Athlete',
+      customerEmail: checkoutForm.email || 'customer@strategy.ae',
+      customerPhone: checkoutForm.phone || '+971 50 123 4567',
+      paymentMethod: checkoutForm.paymentMethod || 'card',
+      subtotalFils: Math.round(subtotal * 100),
+      vatFils: Math.round(subtotal * 5),
+      shippingFils: Math.round(shippingCost * 100),
+      totalFils: Math.round(total * 100),
+      shippingAddress: {
+        line1: checkoutForm.address || 'Standard Delivery',
+        city: checkoutForm.city || 'Dubai',
+        country: 'United Arab Emirates',
+      },
+      items: cartItems.map((i) => ({
+        id: i.id,
+        name: i.name || i.title,
+        priceFils: Math.round((i.price || 0) * 100),
+        quantity: i.quantity || 1,
+      })),
+    };
+
+    try {
+      await publicApi.submitOrder(orderData);
+    } catch (err) {
+      console.warn('Backend order submission fallback:', err.message);
+    }
+
     setOrderComplete({
       orderId,
       items: [...cartItems],
@@ -132,24 +181,13 @@ export default function CartDrawer({
       >
         
         {/* Top Header - White with STRATEGY Blue Accents */}
-        <div className="px-6 py-4 bg-white border-b border-slate-200/80 flex items-center justify-between shadow-xs">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shadow-xs">
-              <ShoppingBag className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base sm:text-lg font-black tracking-wide uppercase text-slate-900 font-sans">
-                  {isCheckingOut ? 'Express Checkout' : 'Shopping Cart'}
-                </h3>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-blue-600 text-white">
-                  {totalItemCount}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 font-medium">
-                STRATEGY Official Athletics Store
-              </p>
-            </div>
+        {/* Top Header */}
+        <div className="px-5 py-4 bg-white border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <ShoppingBag className="w-5 h-5 text-slate-800" />
+            <h3 className="text-base sm:text-lg font-bold text-slate-900 font-sans">
+              {isCheckingOut ? 'Express Checkout' : `${totalItemCount} ${totalItemCount === 1 ? 'item' : 'items'}`}
+            </h3>
           </div>
 
           <div className="flex items-center gap-2">
@@ -164,7 +202,7 @@ export default function CartDrawer({
             )}
             <button
               onClick={closeAll}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="p-1.5 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
               aria-label="Close cart"
             >
               <X className="w-5 h-5" />
@@ -251,29 +289,60 @@ export default function CartDrawer({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Email Address *
+                    Gmail Address *
                   </label>
                   <input
                     type="email"
                     required
-                    placeholder="alex@example.com"
+                    placeholder="alex@gmail.com"
                     value={checkoutForm.email}
-                    onChange={(e) => setCheckoutForm({ ...checkoutForm, email: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all"
+                    onChange={(e) => {
+                      setCheckoutForm({ ...checkoutForm, email: e.target.value });
+                      if (checkoutEmailError) setCheckoutEmailError('');
+                    }}
+                    className={`w-full px-3.5 py-2.5 rounded-xl bg-white border text-slate-900 text-xs sm:text-sm focus:outline-none transition-all ${checkoutEmailError ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-200 focus:ring-2 focus:ring-blue-600'}`}
                   />
+                  {checkoutEmailError && (
+                    <div className="text-[10px] text-rose-500 font-semibold mt-1">
+                      {checkoutEmailError}
+                    </div>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                    Phone / WhatsApp *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="+971 50 123 4567"
-                    value={checkoutForm.phone}
-                    onChange={(e) => setCheckoutForm({ ...checkoutForm, phone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all"
-                  />
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Mobile (9 Digits) *
+                    </label>
+                    <span className="text-[9px] text-slate-400">
+                      {checkoutForm.phone.length}/9
+                    </span>
+                  </div>
+                  <div className={`flex items-center rounded-xl bg-white border overflow-hidden transition-all ${checkoutPhoneError ? 'border-rose-500 ring-1 ring-rose-500' : 'border-slate-200 focus-within:ring-2 focus-within:ring-blue-600'}`}>
+                    <div className="flex items-center gap-1 px-2.5 py-2 bg-slate-100 text-slate-700 font-bold text-xs border-r border-slate-200 shrink-0">
+                      <Phone className="w-3 h-3 text-blue-600" />
+                      <span>+971</span>
+                    </div>
+                    <input
+                      type="tel"
+                      required
+                      maxLength={9}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="50 123 4567"
+                      value={checkoutForm.phone}
+                      onChange={(e) => {
+                        const digits = format10DigitPhone(e.target.value);
+                        setCheckoutForm({ ...checkoutForm, phone: digits });
+                        if (checkoutPhoneError) setCheckoutPhoneError('');
+                      }}
+                      className="w-full px-2.5 py-2 bg-transparent text-slate-900 text-xs sm:text-sm focus:outline-none"
+                    />
+                  </div>
+                  {checkoutPhoneError && (
+                    <div className="text-[10px] text-rose-500 font-semibold mt-1">
+                      {checkoutPhoneError}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -400,265 +469,202 @@ export default function CartDrawer({
             </form>
           </div>
         ) : (
-          /* 3. NORMAL CART ITEMS VIEW */
+          /* 3. MOBILE OPTIMIZED CART ITEMS VIEW */
           <div className="flex-1 flex flex-col min-h-0 bg-white">
             
             {/* Free Shipping Progress Indicator */}
-            <div className="px-6 py-3 bg-gradient-to-r from-blue-50/90 via-indigo-50/60 to-blue-50/90 border-b border-blue-100">
-              <div className="flex items-center justify-between text-xs font-black mb-1.5">
-                <div className="flex items-center gap-1.5 text-slate-800">
-                  <Truck className="w-4 h-4 text-blue-600" />
-                  <span>
-                    {amountToFreeShipping === 0 
-                      ? '🎉 FREE Express UAE Delivery Unlocked!' 
-                      : `Add $${amountToFreeShipping.toFixed(2)} more for FREE UAE Shipping`}
-                  </span>
-                </div>
-                <span className="text-blue-700">{progressPercent}%</span>
+            <div className="px-5 py-3.5 bg-white border-b border-slate-100">
+              <div className="text-center text-xs font-semibold text-slate-800 mb-2">
+                {amountToFreeShipping === 0 
+                  ? 'You are eligible for free shipping!' 
+                  : `Add Dhs. ${amountToFreeShipping.toFixed(2)} AED more for free shipping!`}
               </div>
-              <div className="w-full h-2 rounded-full bg-slate-200 overflow-hidden">
+              <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-500"
+                  className="h-full bg-[#3b4cca] rounded-full transition-all duration-500"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
             </div>
 
-            {/* Scrollable Item List */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3.5">
+            {/* Scrollable Content Container */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+              
+              {/* Cart Items List */}
               {cartItems.length > 0 ? (
-                cartItems.map((item) => {
-                  const itemPrice = typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0;
-                  const itemImg = item.image || (item.images && item.images[0]) || '/images/strategy_basketball_ball.jpg';
-                  const itemQty = item.quantity || 1;
+                <div className="space-y-5">
+                  {cartItems.map((item) => {
+                    const itemPrice = typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0;
+                    const itemImg = item.image || (item.images && item.images[0]) || '/images/strategy_basketball_ball.jpg';
+                    const itemQty = item.quantity || 1;
+                    const brand = item.brand || item.sport || 'STRATEGY';
+                    const variantText = `${item.id.replace('prod-', '8851898')} / ${item.selectedSize || 'Unique size'} / ${item.selectedColor || 'steel grey'}`;
 
-                  return (
-                    <div
-                      key={item.id}
-                      className="p-3.5 rounded-2xl bg-white border border-slate-200/90 hover:border-blue-400 hover:shadow-md transition-all flex gap-3.5 items-center group"
-                    >
-                      {/* Product Thumbnail */}
-                      <div className="w-20 h-20 rounded-xl bg-slate-50 border border-slate-100 p-1.5 shrink-0 flex items-center justify-center overflow-hidden">
-                        <img
-                          src={itemImg}
-                          alt={item.title || item.name}
-                          className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-200"
-                        />
-                      </div>
-
-                      {/* Product Metadata */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[10px] font-black uppercase tracking-wider text-blue-600 mb-0.5">
-                          {item.sport || 'STRATEGY'} • {item.category || 'Athletics'}
+                    return (
+                      <div
+                        key={item.id}
+                        className="flex gap-4 items-start pb-4 border-b border-slate-100 last:border-0"
+                      >
+                        {/* Product Thumbnail */}
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg bg-slate-50 border border-slate-100 p-1 shrink-0 overflow-hidden flex items-center justify-center">
+                          <img
+                            src={itemImg}
+                            alt={item.title || item.name}
+                            className="w-full h-full object-contain"
+                          />
                         </div>
-                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 truncate leading-snug">
-                          {item.title || item.name}
-                        </h4>
 
-                        {/* Variants if any */}
-                        {(item.selectedSize || item.selectedColor) && (
-                          <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-500 font-medium">
-                            {item.selectedSize && (
-                              <span className="px-1.5 py-0.2 bg-slate-100 rounded text-slate-700 font-semibold">
-                                Size: {item.selectedSize}
-                              </span>
-                            )}
-                            {item.selectedColor && (
-                              <span className="px-1.5 py-0.2 bg-slate-100 rounded text-slate-700 font-semibold">
-                                {item.selectedColor}
-                              </span>
-                            )}
+                        {/* Product Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-900 mb-0.5">
+                            {brand}
                           </div>
-                        )}
+                          <h4 className="text-xs sm:text-sm font-semibold text-slate-900 leading-snug line-clamp-2 mb-1">
+                            {item.title || item.name}
+                          </h4>
 
-                        {/* Price and Quantity Stepper Row */}
-                        <div className="flex items-center justify-between mt-2">
-                          <div className="flex items-baseline gap-1.5">
-                            <span className="text-sm font-black text-slate-900">
-                              ${(itemPrice * itemQty).toFixed(2)}
+                          <div className="text-[11px] text-slate-400 mb-2 truncate">
+                            {variantText}
+                          </div>
+
+                          {/* Yellow Highlighted Price */}
+                          <div className="mb-2">
+                            <span className="bg-[#fde047] text-slate-950 font-extrabold px-1.5 py-0.5 rounded text-xs inline-block">
+                              Dhs. {(itemPrice * itemQty).toFixed(2)} AED
                             </span>
-                            {itemQty > 1 && (
-                              <span className="text-[11px] text-slate-400">
-                                (${itemPrice.toFixed(2)} ea)
-                              </span>
-                            )}
                           </div>
 
-                          {/* Stepper + Delete */}
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center border border-slate-200 rounded-lg bg-slate-50">
+                          {/* Stepper + Inline Remove Link */}
+                          <div className="flex items-center gap-3">
+                            <div className="inline-flex items-center gap-3 px-3 py-1 rounded-full border border-slate-300 text-xs bg-white">
                               <button
                                 onClick={() => updateQuantity && updateQuantity(item.id, itemQty - 1)}
-                                className="p-1 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer rounded-l-lg"
+                                className="text-slate-600 hover:text-slate-900 font-bold transition-colors cursor-pointer"
                                 aria-label="Decrease quantity"
                               >
-                                <Minus className="w-3 h-3" />
+                                -
                               </button>
-                              <span className="px-2.5 text-xs font-black text-slate-800">
+                              <span className="font-extrabold text-slate-900 min-w-[12px] text-center">
                                 {itemQty}
                               </span>
                               <button
                                 onClick={() => updateQuantity && updateQuantity(item.id, itemQty + 1)}
-                                className="p-1 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer rounded-r-lg"
+                                className="text-slate-600 hover:text-slate-900 font-bold transition-colors cursor-pointer"
                                 aria-label="Increase quantity"
                               >
-                                <Plus className="w-3 h-3" />
+                                +
                               </button>
                             </div>
 
                             <button
                               onClick={() => removeItem && removeItem(item.id)}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                              title="Remove item"
+                              className="text-xs font-semibold text-slate-500 hover:text-rose-600 underline cursor-pointer transition-colors"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              Remove
                             </button>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               ) : (
-                /* EMPTY STATE (High-End White and Blue) */
+                /* EMPTY STATE */
                 <div className="text-center py-12 px-4 flex flex-col items-center">
-                  <div className="w-16 h-16 rounded-3xl bg-blue-50 border-2 border-blue-200 text-blue-600 flex items-center justify-center mb-4 shadow-sm">
+                  <div className="w-16 h-16 rounded-full bg-blue-50 text-[#3b4cca] flex items-center justify-center mb-4">
                     <ShoppingBag className="w-8 h-8" />
                   </div>
-                  <h3 className="text-lg font-black uppercase text-slate-900 tracking-tight mb-1">
-                    Your Shopping Cart is Empty
+                  <h3 className="text-base font-bold text-slate-900 mb-1">
+                    Your shopping cart is empty
                   </h3>
                   <p className="text-xs text-slate-500 max-w-xs mx-auto mb-6 leading-relaxed">
-                    Gear up with championship-grade basketballs, carbon-plate athletic shoes, and pro sportswear.
+                    Gear up with championship-grade equipment and pro athletics.
                   </p>
 
                   <button
                     onClick={() => handleQuickCategory('shop')}
-                    className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-600/30 transition-all cursor-pointer mb-8"
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#3b4cca] hover:bg-[#2f40cb] text-white text-xs font-bold uppercase tracking-wider shadow-md transition-all cursor-pointer"
                   >
-                    <span>Browse All Products</span>
+                    <span>Browse Catalog</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
-
-                  {/* Quick-Jump Categories */}
-                  <div className="w-full pt-6 border-t border-slate-100 text-left">
-                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block mb-2.5">
-                      Explore Categories
-                    </span>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { name: '🏀 Basketballs', cat: 'basketball' },
-                        { name: '🛼 Skates & Gear', cat: 'skating' },
-                        { name: '👟 Men’s Apparel', cat: 'men' },
-                        { name: '⚡ Women’s Gear', cat: 'women' },
-                      ].map((c) => (
-                        <button
-                          key={c.name}
-                          onClick={() => handleQuickCategory(c.cat)}
-                          className="px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left text-xs font-bold text-slate-700 hover:text-blue-600 transition-colors cursor-pointer flex items-center justify-between"
-                        >
-                          <span>{c.name}</span>
-                          <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </div>
               )}
+
+              {/* "You may also like" Recommendations Section */}
+              {(() => {
+                const recs = (productsData || [])
+                  .filter((p) => !cartItems.some((item) => item.id === p.id))
+                  .slice(0, 3);
+                
+                if (recs.length === 0) return null;
+
+                return (
+                  <div className="pt-4 border-t border-slate-100">
+                    <h4 className="text-base sm:text-lg font-bold text-slate-900 mb-4">
+                      You may also like
+                    </h4>
+
+                    <div className="space-y-4">
+                      {recs.map((rec) => {
+                        const recImg = rec.image || (rec.images && rec.images[0]) || '/images/strategy_basketball_ball.jpg';
+                        return (
+                          <div
+                            key={rec.id}
+                            className="flex items-center gap-3 justify-between"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <img
+                                src={recImg}
+                                alt={rec.name || rec.title}
+                                className="w-16 h-16 rounded-md bg-slate-50 object-contain p-1 border border-slate-100 shrink-0"
+                              />
+                              <div className="min-w-0">
+                                <h5 className="text-xs font-semibold text-slate-900 truncate max-w-[180px] sm:max-w-[220px]">
+                                  {rec.name || rec.title}
+                                </h5>
+                                <div>
+                                  <span className="bg-[#fde047] text-slate-950 font-extrabold px-1.5 py-0.5 rounded text-[11px] inline-block my-1">
+                                    Dhs. {(typeof rec.price === 'number' ? rec.price : parseFloat(rec.price) || 0).toFixed(2)} AED
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-400 font-medium">
+                                  1 color
+                                </div>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => onAddToCart && onAddToCart(rec)}
+                              className="w-8 h-8 rounded-full bg-[#3b4cca] hover:bg-[#2f40cb] text-white flex items-center justify-center shadow-sm cursor-pointer shrink-0 transition-transform active:scale-90"
+                              title="Add to Cart"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
             </div>
 
-            {/* Bottom Section: Promo Code + Financial Breakdown + CTAs */}
+            {/* Fixed Bottom Checkout Section */}
             {cartItems.length > 0 && (
-              <div className="p-6 bg-slate-50/80 border-t border-slate-200/80 space-y-4">
-                
-                {/* Promo Code Strip */}
-                {promoApplied ? (
-                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-emerald-800 font-bold">
-                      <Tag className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Coupon Active: {discount}% OFF (${discountAmount.toFixed(2)} saved)</span>
-                    </div>
-                    <button
-                      onClick={removePromo}
-                      className="text-[11px] font-black text-rose-600 hover:underline cursor-pointer"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <form onSubmit={applyPromo} className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Tag className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        placeholder="Discount code (e.g. STRATEGY10)"
-                        value={promoCode}
-                        onChange={(e) => setPromoCode(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600 uppercase font-mono"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-blue-600 text-white font-black text-xs uppercase tracking-wider transition-colors cursor-pointer shrink-0"
-                    >
-                      Apply
-                    </button>
-                  </form>
-                )}
-                {promoError && (
-                  <p className="text-[11px] text-rose-600 font-semibold">{promoError}</p>
-                )}
+              <div className="sticky bottom-0 bg-white border-t border-slate-100 p-4 sm:p-5 shadow-2xl z-20">
+                <p className="text-center text-xs text-slate-500 mb-2.5 font-medium">
+                  Shipping & taxes calculated at checkout
+                </p>
 
-                {/* Subtotal, Shipping & Total breakdown */}
-                <div className="space-y-1.5 text-xs text-slate-600">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span className="font-bold text-slate-900">${subtotal.toFixed(2)}</span>
-                  </div>
-
-                  {discount > 0 && (
-                    <div className="flex justify-between text-emerald-600 font-bold">
-                      <span>Discount ({discount}%):</span>
-                      <span>-${discountAmount.toFixed(2)}</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between">
-                    <span>Estimated Shipping:</span>
-                    {shippingCost === 0 ? (
-                      <span className="font-black text-emerald-600">FREE</span>
-                    ) : (
-                      <span className="font-bold text-slate-900">$15.00</span>
-                    )}
-                  </div>
-
-                  <div className="pt-2 border-t border-slate-200 flex justify-between items-baseline text-slate-900">
-                    <span className="text-sm font-black uppercase">Estimated Total:</span>
-                    <span className="text-xl font-black text-blue-600">${total.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                {/* Main Action Button */}
                 <button
                   onClick={() => setIsCheckingOut(true)}
-                  className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
+                  className="w-full py-3.5 sm:py-4 rounded-xl bg-[#3b4cca] hover:bg-[#2f40cb] active:bg-[#2433b5] text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-lg cursor-pointer transition-all"
                 >
-                  <span>Proceed to Checkout</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>CHECKOUT • DHS. {total.toFixed(2)} AED</span>
                 </button>
-
-                {/* Trust Badges Footer Strip */}
-                <div className="pt-1 flex items-center justify-center gap-4 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                  <span className="flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                    Authentic Guarantee
-                  </span>
-                  <span>•</span>
-                  <span>Fast GCC Delivery</span>
-                  <span>•</span>
-                  <span>30-Day Returns</span>
-                </div>
-
               </div>
             )}
 

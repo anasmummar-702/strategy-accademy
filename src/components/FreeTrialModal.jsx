@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { X, Calendar, Clock, User, Mail, Phone, Footprints, Sparkles, CheckCircle, Ticket, Download } from 'lucide-react';
+import { X, Calendar, Clock, User, Mail, Phone, Footprints, Sparkles, CheckCircle, Ticket, Download, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { format10DigitPhone, validate10DigitPhone, validateGmail } from '../utils/validation';
 
 export default function FreeTrialModal({ isOpen, onClose }) {
   const [step, setStep] = useState(1);
@@ -17,11 +18,28 @@ export default function FreeTrialModal({ isOpen, onClose }) {
   });
 
   const [bookingTicket, setBookingTicket] = useState(null);
+  const [phoneError, setPhoneError] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   if (!isOpen) return null;
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const emailVal = validateGmail(formData.email);
+    if (!emailVal.isValid) {
+      setEmailError(emailVal.error);
+      return;
+    }
+    setEmailError('');
+
+    const phoneVal = validate10DigitPhone(formData.phone);
+    if (!phoneVal.isValid) {
+      setPhoneError(phoneVal.error);
+      return;
+    }
+    setPhoneError('');
+
     const ticketId = 'SKT-' + Math.floor(100000 + Math.random() * 900000);
     setBookingTicket({
       ...formData,
@@ -131,38 +149,68 @@ export default function FreeTrialModal({ isOpen, onClose }) {
 
                 <div>
                   <label className="block text-xs font-bold text-cyan-400 uppercase tracking-wider mb-1">
-                    Email Address
+                    Gmail Address (@gmail.com only) *
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 absolute left-3.5 top-3.5 text-gray-400" />
                     <input
                       type="email"
                       required
-                      placeholder="sarah@example.com"
+                      placeholder="sarah@gmail.com"
                       value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full bg-white/5 border border-white/15 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400"
+                      onChange={(e) => {
+                        setFormData({ ...formData, email: e.target.value });
+                        if (emailError) setEmailError('');
+                      }}
+                      className={`w-full bg-white/5 border rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none ${emailError ? 'border-rose-500' : 'border-white/15 focus:border-cyan-400'}`}
                     />
                   </div>
+                  {emailError && (
+                    <div className="flex items-center gap-1.5 text-rose-400 text-xs mt-1 font-semibold">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{emailError}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-cyan-400 uppercase tracking-wider mb-1">
-                    Phone Number
-                  </label>
-                  <div className="relative">
-                    <Phone className="w-4 h-4 absolute left-3.5 top-3.5 text-gray-400" />
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                      Mobile (9 Digits) *
+                    </label>
+                    <span className="text-[10px] text-gray-400">
+                      {formData.phone.length}/9
+                    </span>
+                  </div>
+                  <div className={`flex items-center bg-white/5 border rounded-xl overflow-hidden ${phoneError ? 'border-rose-500' : 'border-white/15 focus-within:border-cyan-400'}`}>
+                    <div className="flex items-center gap-1.5 px-3 py-3 bg-white/10 text-cyan-400 font-bold text-xs border-r border-white/10 shrink-0">
+                      <Phone className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>+971</span>
+                    </div>
                     <input
                       type="tel"
                       required
-                      placeholder="+1 (555) 019-2834"
+                      maxLength={9}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="50 123 4567"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="w-full bg-white/5 border border-white/15 rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-cyan-400"
+                      onChange={(e) => {
+                        const digits = format10DigitPhone(e.target.value);
+                        setFormData({ ...formData, phone: digits });
+                        if (phoneError) setPhoneError('');
+                      }}
+                      className="w-full bg-transparent px-3 py-3 text-sm text-white focus:outline-none"
                     />
                   </div>
+                  {phoneError && (
+                    <div className="flex items-center gap-1.5 text-rose-400 text-xs mt-1 font-semibold">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{phoneError}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div>

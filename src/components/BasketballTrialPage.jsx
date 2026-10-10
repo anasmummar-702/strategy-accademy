@@ -18,9 +18,11 @@ import {
   ChevronRight,
   X,
   Mail,
-  Phone
+  Phone,
+  AlertCircle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { format10DigitPhone, validate10DigitPhone, validateGmail } from '../utils/validation';
 
 export default function BasketballTrialPage({ navigateTo }) {
   const [vipPerk, setVipPerk] = useState(false);
@@ -47,6 +49,8 @@ export default function BasketballTrialPage({ navigateTo }) {
   const [ageGroup, setAgeGroup] = useState('Junior Hoops (Ages 5-9)');
   const [clientEmail, setClientEmail] = useState('');
   const [clientPhone, setClientPhone] = useState('');
+  const [phoneError, setPhoneError] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleOpenBooking = () => {
@@ -59,6 +63,22 @@ export default function BasketballTrialPage({ navigateTo }) {
 
   const handleCompleteBooking = (e) => {
     if (e) e.preventDefault();
+    
+    // Strict Validation: 9 Digits Phone & @gmail.com Email
+    const phoneVal = validate10DigitPhone(clientPhone);
+    if (!phoneVal.isValid) {
+      setPhoneError(phoneVal.error);
+      return;
+    }
+    setPhoneError('');
+
+    const emailVal = validateGmail(clientEmail);
+    if (!emailVal.isValid) {
+      setEmailError(emailVal.error);
+      return;
+    }
+    setEmailError('');
+
     setIsProcessing(true);
     setTimeout(() => {
       setIsProcessing(false);
@@ -625,34 +645,99 @@ export default function BasketballTrialPage({ navigateTo }) {
                   </select>
                 </div>
 
-                {/* Phone Number */}
+                {/* Phone Number - Fixed +971 Prefix, 9 Digits Only, No Letters */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
-                    Parent / Athlete UAE Mobile
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={clientPhone}
-                    onChange={(e) => setClientPhone(e.target.value)}
-                    placeholder="+971 50 123 4567"
-                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>
+                      Parent / Athlete UAE Mobile (9 Digits) *
+                    </label>
+                    <span style={{ fontSize: '11px', color: clientPhone.length === 9 ? '#16a34a' : '#64748b', fontWeight: 600 }}>
+                      {clientPhone.length}/9
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    border: phoneError ? '1.5px solid #ef4444' : '1px solid #cbd5e1',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    backgroundColor: '#ffffff'
+                  }}>
+                    <div style={{
+                      padding: '0 12px',
+                      background: '#eff6ff',
+                      borderRight: '1px solid #cbd5e1',
+                      color: '#0035f5',
+                      fontWeight: 800,
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      alignSelf: 'stretch'
+                    }}>
+                      <Phone size={14} color="#0035f5" />
+                      <span>+971</span>
+                    </div>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={9}
+                      required
+                      value={clientPhone}
+                      onChange={(e) => {
+                        const clean = format10DigitPhone(e.target.value);
+                        setClientPhone(clean);
+                        if (phoneError) setPhoneError('');
+                      }}
+                      placeholder="50 123 4567"
+                      style={{ 
+                        flex: 1,
+                        padding: '12px', 
+                        border: 'none',
+                        fontSize: '14px', 
+                        outline: 'none',
+                        letterSpacing: '0.05em'
+                      }}
+                    />
+                  </div>
+                  {phoneError && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ef4444', fontSize: '11px', marginTop: '4px', fontWeight: 600 }}>
+                      <AlertCircle size={12} />
+                      <span>{phoneError}</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Email Address */}
+                {/* Email Address - Strictly @gmail.com */}
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>
-                    Email Address (for Digital Pass PDF)
+                    Gmail Address (@gmail.com only) *
                   </label>
                   <input
                     type="email"
                     required
                     value={clientEmail}
-                    onChange={(e) => setClientEmail(e.target.value)}
+                    onChange={(e) => {
+                      setClientEmail(e.target.value);
+                      if (emailError) setEmailError('');
+                    }}
                     placeholder="player@gmail.com"
-                    style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+                    style={{ 
+                      width: '100%', 
+                      padding: '12px', 
+                      borderRadius: '12px', 
+                      border: emailError ? '1.5px solid #ef4444' : '1px solid #cbd5e1', 
+                      fontSize: '14px', 
+                      outline: 'none' 
+                    }}
                   />
+                  {emailError && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#ef4444', fontSize: '11px', marginTop: '4px', fontWeight: 600 }}>
+                      <AlertCircle size={12} />
+                      <span>{emailError}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* 100% Free Notice */}

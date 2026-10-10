@@ -8,9 +8,21 @@ export default function SpecialEdition({
   onQuickView,
   onToggleWishlist,
   wishlistedIds = [],
-  onExploreSpecialEdition
+  onExploreSpecialEdition,
+  navigateTo
 }) {
   const specialEditionProducts = products.filter((p) => p.isSpecialEdition).slice(0, 4);
+
+  const handleExplore = () => {
+    if (navigateTo) {
+      navigateTo('special-edition');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else if (onExploreSpecialEdition) {
+      onExploreSpecialEdition();
+    } else {
+      window.location.hash = 'special-edition';
+    }
+  };
 
   return (
     <section className="w-full bg-[#050d24] py-12 sm:py-16 md:py-20 relative overflow-hidden border-y border-blue-900/40">
@@ -37,7 +49,7 @@ export default function SpecialEdition({
           </div>
 
           <button
-            onClick={onExploreSpecialEdition}
+            onClick={handleExplore}
             className="inline-flex items-center gap-2 px-5 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs sm:text-sm tracking-wider uppercase shadow-lg shadow-blue-900/30 hover:scale-105 transition-all cursor-pointer whitespace-nowrap self-start sm:self-auto"
           >
             <span>EXPLORE SPECIAL EDITION</span>

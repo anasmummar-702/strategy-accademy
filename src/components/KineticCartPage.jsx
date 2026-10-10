@@ -205,7 +205,7 @@ export default function KineticCartPage({
       <div className="absolute top-10 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute top-1/3 right-10 w-96 h-96 bg-amber-500/5 rounded-full blur-[160px] pointer-events-none" />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 lg:pt-12 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-12 relative z-10">
         
         {/* =========================================================================
             LUXURY ATELIER PROGRESS PIPELINE (ADORABLE & HIGH-END)

@@ -510,170 +510,188 @@ export default function BasketballScratchModal({ isOpen, onClose, onRegister }) 
         />
       ))}
 
-      {/* Super Scratch Card (Exact match - only the card itself) */}
+      {/* Super Scratch Card - Claymorphism 3D Blue Styling */}
       <div 
         className="ice-scratch-dialog"
         onClick={(e) => e.stopPropagation()}
         style={{
           position: 'relative',
           width: '100%',
-          maxWidth: '380px',
-          minHeight: isRevealed ? 'auto' : '280px',
-          borderRadius: '24px',
-          backgroundColor: '#ffffff',
+          maxWidth: '390px',
+          minHeight: isRevealed ? 'auto' : '290px',
+          borderRadius: '32px',
+          background: 'linear-gradient(160deg, #f0f9ff 0%, #e0f2fe 50%, #dbeafe 100%)',
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          border: 'none',
-          boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.4), 0 0 35px rgba(56, 189, 248, 0.15)'
+          border: '3px solid #ffffff',
+          boxShadow: '20px 20px 50px rgba(37, 99, 235, 0.3), -10px -10px 30px #ffffff, inset 4px 4px 8px rgba(255, 255, 255, 0.9), inset -4px -4px 8px rgba(37, 99, 235, 0.15)'
         }}
       >
-        {/* Subtle Floating Close Button */}
+        {/* Puffy 3D Clay Floating Close Button */}
         <button
           onClick={onClose}
           style={{
             position: 'absolute',
-            top: '12px',
-            right: '12px',
-            width: '30px',
-            height: '30px',
+            top: '14px',
+            right: '14px',
+            width: '36px',
+            height: '36px',
             borderRadius: '50%',
-            backgroundColor: 'rgba(15, 23, 42, 0.08)',
-            color: '#0f172a',
-            border: 'none',
+            background: 'linear-gradient(145deg, #ffffff, #dbeafe)',
+            color: '#1d4ed8',
+            border: '1.5px solid #ffffff',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
             zIndex: 30,
-            backdropFilter: 'blur(4px)'
+            boxShadow: 'inset 2px 2px 4px #ffffff, inset -2px -2px 4px rgba(37, 99, 235, 0.2), 4px 6px 12px rgba(37, 99, 235, 0.2)',
+            transition: 'all 0.2s ease'
           }}
           title="Close"
         >
-          <X style={{ width: '16px', height: '16px' }} />
+          <X style={{ width: '18px', height: '18px', strokeWidth: 2.8 }} />
         </button>
 
-        {/* Revealed Content Underneath (Revealed when card is scratched) */}
+        {/* Revealed Content Underneath (Claymorphism Blue Theme) */}
         <div style={{
           width: '100%',
-          minHeight: '280px',
-          padding: '24px 20px',
+          minHeight: '290px',
+          padding: '28px 22px',
           textAlign: 'center',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '12px',
-          background: 'linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%)',
-          borderRadius: '24px',
+          gap: '14px',
+          background: 'linear-gradient(160deg, #f0f9ff 0%, #e0f2fe 50%, #dbeafe 100%)',
+          borderRadius: '32px',
           boxSizing: 'border-box'
         }}>
+          {/* Puffy 3D Clay Badge */}
           <div style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '6px',
-            padding: '4px 14px',
+            gap: '8px',
+            padding: '6px 18px',
             borderRadius: '9999px',
-            backgroundColor: '#ecfdf5',
-            color: '#059669',
+            background: 'linear-gradient(145deg, #eff6ff, #dbeafe)',
+            color: '#1d4ed8',
             fontSize: '11px',
             fontWeight: 900,
             textTransform: 'uppercase',
-            border: '1px solid #a7f3d0'
+            border: '2px solid #bfdbfe',
+            boxShadow: 'inset 3px 3px 6px #ffffff, inset -3px -3px 6px rgba(37, 99, 235, 0.15), 4px 6px 14px rgba(37, 99, 235, 0.15)',
+            letterSpacing: '0.04em'
           }}>
-            <Trophy style={{ width: '14px', height: '14px', color: '#eab308' }} />
+            <Trophy style={{ width: '15px', height: '15px', color: '#2563eb' }} />
             <span>VIP OFFER UNLOCKED!</span>
           </div>
 
+          {/* Heading */}
           <h4 style={{
-            fontFamily: 'var(--font-heading)',
-            fontSize: '20px',
+            fontFamily: 'Outfit, sans-serif',
+            fontSize: '22px',
             fontWeight: 900,
-            color: '#0f172a',
+            color: '#1e3a8a',
             lineHeight: 1.2,
-            margin: 0
+            margin: 0,
+            letterSpacing: '-0.02em',
+            textShadow: '0 2px 4px rgba(255, 255, 255, 0.8)'
           }}>
             2 MONTH BASKETBALL COACHING
           </h4>
 
-          {/* Price display - Clean white card style */}
+          {/* Puffy 3D Clay Price display card */}
           <div style={{
-            padding: '8px 16px',
-            borderRadius: '14px',
-            backgroundColor: '#f8fafc',
-            border: '1px solid #e2e8f0',
+            padding: '12px 20px',
+            borderRadius: '24px',
+            background: 'linear-gradient(145deg, #ffffff, #f0f9ff)',
+            border: '2.5px solid #ffffff',
             width: '100%',
-            maxWidth: '280px',
+            maxWidth: '300px',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-around'
+            justifyContent: 'space-around',
+            boxShadow: 'inset 4px 4px 8px rgba(255, 255, 255, 0.95), inset -4px -4px 8px rgba(37, 99, 235, 0.12), 8px 12px 24px rgba(37, 99, 235, 0.18)',
+            boxSizing: 'border-box'
           }}>
             <div>
-              <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>Regular</span>
-              <span style={{ fontSize: '14px', color: '#94a3b8', textDecoration: 'line-through', fontWeight: 700 }}>750 AED</span>
+              <span style={{ fontSize: '10px', color: '#64748b', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em', display: 'block' }}>Regular</span>
+              <span style={{ fontSize: '15px', color: '#94a3b8', textDecoration: 'line-through', fontWeight: 800 }}>750 AED</span>
             </div>
 
-            <div style={{ fontSize: '18px', color: '#0284c7', fontWeight: 900 }}>➔</div>
+            <div style={{ fontSize: '20px', color: '#2563eb', fontWeight: 900 }}>➔</div>
 
             <div>
-              <span style={{ fontSize: '10px', color: '#0284c7', textTransform: 'uppercase', fontWeight: 800, display: 'block' }}>VIP Deal</span>
-              <span style={{ fontSize: '28px', color: '#0284c7', fontWeight: 900, fontFamily: 'var(--font-heading)', lineHeight: 1 }}>500 AED</span>
+              <span style={{ fontSize: '10px', color: '#2563eb', textTransform: 'uppercase', fontWeight: 900, letterSpacing: '0.05em', display: 'block' }}>VIP Deal</span>
+              <span style={{ fontSize: '30px', color: '#2563eb', fontWeight: 900, fontFamily: 'Outfit, sans-serif', lineHeight: 1, textShadow: '0 2px 4px rgba(37, 99, 235, 0.15)' }}>500 AED</span>
             </div>
           </div>
 
+          {/* Puffy 3D Clay Save Pill */}
           <div style={{
-            padding: '4px 14px',
+            padding: '6px 18px',
             borderRadius: '9999px',
-            backgroundColor: '#0284c7',
+            background: 'linear-gradient(145deg, #3b82f6, #1d4ed8)',
             color: '#ffffff',
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: 900,
-            letterSpacing: '0.02em'
+            letterSpacing: '0.03em',
+            border: '2px solid #60a5fa',
+            boxShadow: 'inset 2px 2px 4px rgba(255, 255, 255, 0.5), inset -3px -3px 6px rgba(15, 23, 42, 0.35), 0 8px 18px rgba(37, 99, 235, 0.35)'
           }}>
             🎉 YOU SAVE 250 AED!
           </div>
 
           {/* Action elements shown when revealed */}
           {isRevealed && (
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '6px' }}>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+              
+              {/* Inset 3D Clay Promo Code Box */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                padding: '8px 12px',
-                borderRadius: '12px',
-                backgroundColor: '#f8fafc',
-                border: '1px dashed #cbd5e1'
+                padding: '10px 14px',
+                borderRadius: '20px',
+                background: '#f0f9ff',
+                border: '2px dashed #60a5fa',
+                boxShadow: 'inset 3px 3px 6px rgba(37, 99, 235, 0.15), inset -3px -3px 6px #ffffff'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Tag style={{ width: '14px', height: '14px', color: '#0284c7' }} />
-                  <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 700 }}>Code:</span>
-                  <span style={{ fontSize: '13px', fontWeight: 900, color: '#0f172a', fontFamily: 'monospace' }}>HOOPS450</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Tag style={{ width: '16px', height: '16px', color: '#2563eb' }} />
+                  <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 800 }}>Code:</span>
+                  <span style={{ fontSize: '14px', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', letterSpacing: '0.05em' }}>HOOPS450</span>
                 </div>
 
                 <button
                   onClick={copyPromoCode}
                   style={{
-                    padding: '5px 12px',
-                    borderRadius: '8px',
-                    backgroundColor: '#eff6ff',
-                    border: '1px solid #bfdbfe',
-                    color: '#0284c7',
+                    padding: '7px 14px',
+                    borderRadius: '12px',
+                    background: 'linear-gradient(145deg, #ffffff, #dbeafe)',
+                    border: '2px solid #bfdbfe',
+                    color: '#2563eb',
                     fontSize: '11px',
                     fontWeight: 800,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '4px'
+                    gap: '5px',
+                    boxShadow: 'inset 2px 2px 4px #ffffff, inset -2px -2px 4px rgba(37, 99, 235, 0.2), 3px 5px 12px rgba(37, 99, 235, 0.15)',
+                    transition: 'all 0.2s ease'
                   }}
                 >
-                  {copiedCode ? <Check style={{ width: '12px', height: '12px', color: '#16a34a' }} /> : <Copy style={{ width: '12px', height: '12px' }} />}
+                  {copiedCode ? <Check style={{ width: '13px', height: '13px', color: '#16a34a' }} /> : <Copy style={{ width: '13px', height: '13px' }} />}
                   <span>{copiedCode ? 'Copied!' : 'Copy Code'}</span>
                 </button>
               </div>
 
+              {/* Giant Inflated 3D Clay CTA Button */}
               <button
                 onClick={() => {
                   onClose();
@@ -681,24 +699,25 @@ export default function BasketballScratchModal({ isOpen, onClose, onRegister }) 
                 }}
                 style={{
                   width: '100%',
-                  padding: '12px',
-                  borderRadius: '14px',
-                  background: 'linear-gradient(90deg, #0284c7 0%, #2563eb 100%)',
+                  padding: '15px 20px',
+                  borderRadius: '22px',
+                  background: 'linear-gradient(145deg, #3b82f6 0%, #1d4ed8 100%)',
                   color: '#ffffff',
                   fontWeight: 900,
-                  fontSize: '13px',
-                  letterSpacing: '0.02em',
-                  border: 'none',
-                  boxShadow: '0 8px 25px rgba(2, 132, 199, 0.4)',
+                  fontSize: '14px',
+                  letterSpacing: '0.03em',
+                  border: '2.5px solid #93c5fd',
+                  boxShadow: 'inset 4px 4px 8px rgba(255, 255, 255, 0.5), inset -4px -4px 8px rgba(15, 23, 42, 0.35), 0 14px 32px rgba(37, 99, 235, 0.45)',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '6px'
+                  gap: '8px',
+                  transition: 'all 0.25s ease'
                 }}
               >
                 <span>CLAIM VIP PASS (500 AED)</span>
-                <ArrowRight style={{ width: '15px', height: '15px' }} />
+                <ArrowRight style={{ width: '17px', height: '17px', strokeWidth: 3 }} />
               </button>
             </div>
           )}

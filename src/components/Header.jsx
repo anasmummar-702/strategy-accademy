@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, Calendar, Menu, X, Sparkles, ChevronRight } from 'lucide-react';
+import StrategyLogo from './StrategyLogo';
 
 export default function Header({ activeTab, setActiveTab, cartCount, openCart, openTrialModal }) {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -30,18 +31,9 @@ export default function Header({ activeTab, setActiveTab, cartCount, openCart, o
           {/* Brand Logo */}
           <div 
             onClick={() => { setActiveTab('home'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            className="brand-link"
+            className="cursor-pointer"
           >
-            <div className="brand-logo-icon">
-              <div className="brand-logo-inner">
-                <Sparkles className="w-5 h-5 text-cyan-400" />
-              </div>
-            </div>
-            <div>
-              <div className="font-extrabold text-xl tracking-wider text-white font-['Outfit'] flex items-center gap-1">
-                STRATEGY<span className="gradient-text">SKATE</span>
-              </div>
-            </div>
+            <StrategyLogo variant="full" theme="dark" size="md" />
           </div>
 
           {/* Desktop Navigation */}

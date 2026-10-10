@@ -1,11 +1,13 @@
-import React, { useState, useMemo } from 'react';
-import { ArrowLeft, Filter, SlidersHorizontal, Search, Sparkles, Check } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Filter, SlidersHorizontal, Search, Sparkles, Check } from 'lucide-react';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import ProductCard from './ProductCard';
 import WishlistDrawer from './WishlistDrawer';
 import SearchOverlay from './SearchOverlay';
 import { productsData } from '../data/products';
+import { publicApi } from '../services/api';
+import { getBannerForFilter } from '../services/bannerConfigService';
 
 export default function CategoryShopView({
   filterType = 'all', // 'all' | 'basketball' | 'football' | 'running' | 'men' | 'women' | 'kids' | 'special-edition'
@@ -14,12 +16,27 @@ export default function CategoryShopView({
   totalCartCount = 0,
   onOpenCart
 }) {
+  const [productsList, setProductsList] = useState(productsData);
   const [selectedSport, setSelectedSport] = useState('all');
   const [selectedGender, setSelectedGender] = useState('all');
   const [sortBy, setSortBy] = useState('featured');
   const [wishlistItems, setWishlistItems] = useState([]);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  // Fetch live published products from backend API
+  useEffect(() => {
+    publicApi
+      .getProducts()
+      .then((res) => {
+        if (res && res.products && res.products.length > 0) {
+          setProductsList(res.products);
+        }
+      })
+      .catch((err) => {
+        console.warn('CategoryShopView static fallback:', err.message);
+      });
+  }, []);
 
   // Initialize wishlist from localStorage
   React.useEffect(() => {
@@ -51,11 +68,20 @@ export default function CategoryShopView({
     }
   };
 
+  // Reset active filter selections and scroll to top when category route changes
+  useEffect(() => {
+    setSelectedSport('all');
+    setSelectedGender('all');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [filterType]);
+
   // Compute filtered products
   const filteredProducts = useMemo(() => {
-    return productsData.filter((item) => {
+    return productsList.filter((item) => {
       // 1. Initial page filter
       if (filterType === 'special-edition' && !item.isSpecialEdition) return false;
+      if (filterType === 'shop-new' && !item.isNew && !item.isNewArrival) return false;
+      if (filterType === 'shop-best' && !item.isBestSeller) return false;
       if (filterType.startsWith('category-')) {
         const cat = filterType.replace('category-', '').toLowerCase();
         if (item.sport.toLowerCase() !== cat && item.category.toLowerCase() !== cat) return false;
@@ -85,17 +111,20 @@ export default function CategoryShopView({
       if (sortBy === 'rating') return b.rating - a.rating;
       return 0; // default featured
     });
-  }, [filterType, selectedSport, selectedGender, sortBy]);
+  }, [productsList, filterType, selectedSport, selectedGender, sortBy]);
 
-  const getPageTitle = () => {
-    if (filterType === 'special-edition') return 'SPECIAL EDITION VAULT';
-    if (filterType.startsWith('category-')) return `${filterType.replace('category-', '').toUpperCase()} COLLECTION`;
-    if (filterType.startsWith('gender-')) return `${filterType.replace('gender-', '').toUpperCase()}'S ATHLETICS`;
-    if (filterType === 'men') return "MEN'S PERFORMANCE";
-    if (filterType === 'women') return "WOMEN'S PERFORMANCE";
-    if (filterType === 'kids') return "JUNIOR & KIDS ATHLETICS";
-    if (filterType === 'sports') return "ALL SPORTS DISCIPLINES";
-    return "STRATEGY PRO CATALOG";
+  const [, setBannersVersion] = useState(0);
+
+  useEffect(() => {
+    const handleBannersUpdate = () => {
+      setBannersVersion((v) => v + 1);
+    };
+    window.addEventListener('strategy-banners-updated', handleBannersUpdate);
+    return () => window.removeEventListener('strategy-banners-updated', handleBannersUpdate);
+  }, []);
+
+  const getBannerDetails = () => {
+    return getBannerForFilter(filterType);
   };
 
   return (
@@ -112,38 +141,61 @@ export default function CategoryShopView({
         onOpenSearch={() => setIsSearchOpen(true)}
       />
 
-      <div className="pt-24 sm:pt-28 pb-16 flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        
-        {/* Breadcrumb & Back */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={() => navigateTo && navigateTo('home')}
-            className="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Strategy Home</span>
-          </button>
+      {/* Dynamic Full-Bleed Page Hero Banner (Fills Top Bar) */}
+      {(() => {
+        const banner = getBannerDetails();
+        return (
+          <div className="relative w-full overflow-hidden min-h-[300px] sm:min-h-[360px] flex items-end pt-28 sm:pt-36 pb-10 sm:pb-14 shadow-lg border-b border-slate-800/30">
+            {/* Page Specific Background Image */}
+            <img
+              src={banner.image}
+              alt={banner.title}
+              className="absolute inset-0 w-full h-full object-cover object-center"
+            />
 
-          <span className="text-xs font-bold text-slate-400">
-            Showing {filteredProducts.length} items
-          </span>
-        </div>
+            {/* Dynamic Theme Gradient Overlay */}
+            <div className={`absolute inset-0 bg-gradient-to-r ${banner.gradient}`} />
 
-        {/* Catalog Banner Header */}
-        <div className="p-6 sm:p-10 rounded-3xl bg-slate-950 text-white shadow-xl mb-8 relative overflow-hidden">
-          <div className="relative z-10 max-w-2xl">
-            <span className="text-xs font-black tracking-widest uppercase text-blue-400 mb-2 block">
-              10+ YEARS OF ATHLETIC INNOVATION
-            </span>
-            <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight">
-              {getPageTitle()}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 font-medium mt-2">
-              Tournament-tested equipment, carbon-plated footwear & technical athletic sportswear.
-            </p>
+            {/* Top gradient shadow for Navbar readability & seamless blending */}
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-transparent to-slate-950/40 pointer-events-none" />
+
+            {/* Halftone Dot Pattern Overlay */}
+            <div 
+              className="absolute inset-0 opacity-15 pointer-events-none"
+              style={{backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 1px)', backgroundSize: '24px 24px'}} 
+            />
+
+            {/* Ambient Glowing Orb */}
+            <div className={`absolute -right-12 -bottom-12 w-96 h-96 rounded-full blur-3xl pointer-events-none ${banner.glow}`} />
+
+            {/* Banner Content Container */}
+            <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+              <div className="max-w-2xl">
+                <span className={`inline-flex items-center px-3.5 py-1 rounded-full border text-xs font-black tracking-widest uppercase mb-3 backdrop-blur-md shadow-sm ${banner.badgeStyle}`}>
+                  {banner.badge}
+                </span>
+
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-white drop-shadow-md">
+                  {banner.title}
+                </h1>
+
+                <p className="text-xs sm:text-sm text-slate-200 font-medium mt-2.5 leading-relaxed max-w-xl drop-shadow-sm">
+                  {banner.subtitle}
+                </p>
+              </div>
+
+              {/* Item Counter Badge on Banner */}
+              <div className="sm:self-end">
+                <span className="inline-flex items-center px-3 py-1.5 rounded-xl bg-black/40 backdrop-blur-md border border-white/15 text-xs font-bold text-white shadow-sm">
+                  Showing {filteredProducts.length} items
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="absolute -right-10 -bottom-10 w-72 h-72 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
-        </div>
+        );
+      })()}
+
+      <div className="py-8 pb-16 flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
 
         {/* Filter & Sort Bar */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm mb-8 flex flex-wrap items-center justify-between gap-4">

@@ -15,69 +15,84 @@ import {
   Sparkles, 
   ShoppingBag,
   Award,
-  Footprints
+  Footprints,
+  AlertCircle
 } from 'lucide-react';
-import AppointmentCalendar from './AppointmentCalendar';
+import { format10DigitPhone, validate10DigitPhone } from '../utils/validation';
+import { getSkatingGallery } from '../utils/academyGalleriesData';
+import { getSkatingPackages } from '../utils/academyPackagesData';
 
 export default function AboutSection({ navigateTo, openTrialModal }) {
+  // Dynamic Packages State from Admin
+  const [skatingPackages, setSkatingPackages] = useState(getSkatingPackages);
+
+  useEffect(() => {
+    const handlePackagesUpdate = () => {
+      setSkatingPackages(getSkatingPackages());
+    };
+    window.addEventListener('strategy_packages_updated', handlePackagesUpdate);
+    return () => window.removeEventListener('strategy_packages_updated', handlePackagesUpdate);
+  }, []);
+
+  const pkg1 = skatingPackages[0] || {
+    priceAED: 550,
+    originalPriceAED: 600,
+    classesCount: 8,
+    classesLabel: '8 Sessions',
+    validityLabel: '1 Month',
+    uniformFeeAED: 50,
+    badgeText: 'Starter',
+    subtitle: 'Perfect for beginners & trial commitment'
+  };
+  const pkg2 = skatingPackages[1] || {
+    priceAED: 750,
+    originalPriceAED: 900,
+    classesCount: 16,
+    classesLabel: '16 Sessions',
+    validityLabel: '2 Months',
+    uniformFeeAED: 50,
+    badgeText: 'Most Popular',
+    subtitle: 'Ideal for building real skating skills'
+  };
+  const pkg3 = skatingPackages[2] || {
+    priceAED: 1000,
+    originalPriceAED: 1300,
+    classesCount: 999,
+    classesLabel: 'Unlimited',
+    validityLabel: '3 Months',
+    uniformFeeAED: 50,
+    badgeText: 'VIP Unlimited',
+    subtitle: 'Unlimited access — maximum progress'
+  };
+
   // Gallery carousel state
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isAutoPlay, setIsAutoPlay] = useState(true);
+  const [galleryImages, setGalleryImages] = useState(getSkatingGallery);
+
+
+  // Reactive gallery synchronization
+  useEffect(() => {
+    const handleUpdate = (e) => {
+      if (!e.detail || e.detail.sport === 'skating' || e.detail.sport === 'all') {
+        setGalleryImages(getSkatingGallery());
+      }
+    };
+    window.addEventListener('strategy_gallery_updated', handleUpdate);
+    return () => window.removeEventListener('strategy_gallery_updated', handleUpdate);
+  }, []);
 
   // Appointment Modal State
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [appointmentName, setAppointmentName] = useState('');
   const [appointmentPhone, setAppointmentPhone] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [appointmentDate, setAppointmentDate] = useState('2026-10-10');
   const [appointmentService, setAppointmentService] = useState('Skating Training Program (10-Level)');
   const [appointmentSubmitted, setAppointmentSubmitted] = useState(false);
 
   // Lightbox Image Preview
   const [selectedImage, setSelectedImage] = useState(null);
-
-  // Carousel images from UAE Skating Angels
-  const galleryImages = [
-    {
-      src: '/images/skating_angels/gallery_1.jpg',
-      title: '1:1 Certified Coach Training',
-      desc: 'Patient pro instructor guiding beginner balance & confidence'
-    },
-    {
-      src: '/images/skating_angels/gallery_2.jpg',
-      title: 'Youth Group Roller Skating Session',
-      desc: 'Joyful group glide with full safety gear & pro supervision'
-    },
-    {
-      src: '/images/skating_angels/gallery_3.jpg',
-      title: 'Pro Shop Skates & Protection Gear',
-      desc: 'High-performance inline & quad skates, helmets, and pads'
-    },
-    {
-      src: '/images/skating_angels/gallery_4.jpg',
-      title: 'Speed & Championship Technique',
-      desc: 'Fast turns, agility, and competitive skating clinic'
-    },
-    {
-      src: '/images/skating_angels/gallery_5.jpg',
-      title: 'Graceful Balance & Freestyle Glide',
-      desc: 'Confidence, artistic posture, and balance mastery'
-    },
-    {
-      src: '/images/skating_angels/gallery_6.jpg',
-      title: 'Regional Championship Podium',
-      desc: 'Proud students celebrating medals and official certificates'
-    },
-    {
-      src: '/images/skating_angels/gallery_7.jpg',
-      title: 'Arena Lounge & Skate Rental Counter',
-      desc: 'Air-conditioned luxury lounge at Al Nahiyan, Abu Dhabi'
-    },
-    {
-      src: '/images/skating_angels/gallery_8.jpg',
-      title: 'Youth Mentorship & Guidance',
-      desc: 'Encouraging certified instructors building real skill step-by-step'
-    }
-  ];
 
   // Auto-advance carousel
   useEffect(() => {
@@ -100,7 +115,15 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
 
   const handleBookAppointment = (e) => {
     e.preventDefault();
-    if (!appointmentName.trim() || !appointmentPhone.trim()) return;
+    if (!appointmentName.trim()) return;
+    
+    const phoneVal = validate10DigitPhone(appointmentPhone);
+    if (!phoneVal.isValid) {
+      setPhoneError(phoneVal.error);
+      return;
+    }
+    setPhoneError('');
+
     setAppointmentSubmitted(true);
     setTimeout(() => {
       setAppointmentSubmitted(false);
@@ -534,13 +557,6 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
               </div>
             </div>
 
-            <button
-              onClick={() => setIsAppointmentModalOpen(true)}
-              className="mt-6 px-6 py-3 rounded-full bg-[#00473e] hover:bg-[#003831] text-white text-xs font-bold shadow-md shadow-emerald-950/20 flex items-center gap-2 active:scale-95 transition-all"
-            >
-              <Calendar className="w-4 h-4 text-emerald-300" />
-              <span>Inquire Coaching Rates & Timing</span>
-            </button>
 
           </div>
 
@@ -561,136 +577,44 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
             <div className="absolute top-1/2 right-1/4 w-48 h-48 rounded-full bg-white/5 blur-2xl pointer-events-none" />
 
             {/* Halftone dot pattern overlay */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none"
+            <div 
+              className="absolute inset-0 opacity-10 pointer-events-none"
               style={{backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 1px)', backgroundSize: '28px 28px'}} 
             />
 
-            <div className="relative z-10 px-8 sm:px-14 lg:px-20 py-14 sm:py-20 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div className="relative z-10 px-6 sm:px-10 py-10 sm:py-14 max-w-3xl mx-auto text-center flex flex-col items-center justify-center">
               
-              {/* Left: Content */}
-              <div>
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm mb-6">
-                  <span className="w-2 h-2 rounded-full bg-[#7fffd4] animate-pulse inline-block" />
-                  <span className="text-[#7fffd4] text-xs font-extrabold uppercase tracking-[0.2em]">12 SPOTS LEFT THIS WEEK • 30 AED SPECIAL</span>
-                </div>
-
-                <h2 className="font-['Unbounded',sans-serif] text-3xl sm:text-4xl lg:text-5xl font-black text-white leading-[1.1] uppercase mb-4">
-                  Experience The<br />
-                  <span className="text-[#7fffd4]">Magic On Wheels</span><br />
-                  Trial Class
-                </h2>
-
-                <p className="text-teal-100 text-sm sm:text-base leading-relaxed max-w-md mb-8">
-                  Your first 45-minute glide session with pro skates, safety helmet, protective armor (wrist, elbow & knee pads), and 1:1 certified coaching for just <strong className="text-white">30 Dirhams (30 AED)</strong>!
-                </p>
-
-                {/* Trial Highlights */}
-                <div className="space-y-3 mb-10">
-                  {[
-                    { icon: '⏱️', text: '45-minute guided session with 1:1 certified coach' },
-                    { icon: '🛼', text: 'Sanitized rental skates & complete safety armor included' },
-                    { icon: '📋', text: '4-step guided rink progress: stance, balance & glide lock' },
-                    { icon: '⚡', text: 'Special 30 AED introductory trial rate — all ages welcome' },
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <span className="text-lg flex-shrink-0">{item.icon}</span>
-                      <span className="text-sm text-teal-100">{item.text}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex flex-wrap gap-4">
-                  <button
-                    onClick={() => {
-                      if (navigateTo) navigateTo('trial-skating');
-                      else window.location.hash = 'trial-skating';
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }}
-                    className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white hover:bg-[#7fffd4] text-[#004d45] font-black text-sm shadow-xl hover:scale-105 active:scale-95 transition-all"
-                  >
-                    <Sparkles className="w-4 h-4" />
-                    <span>Book 30 AED Trial Class</span>
-                  </button>
-                  <button
-                    onClick={() => setIsAppointmentModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-8 py-4 rounded-full border-2 border-white/40 text-white font-bold text-sm hover:bg-white/10 transition-all"
-                  >
-                    <Phone className="w-4 h-4" />
-                    <span>Call Us</span>
-                  </button>
-                </div>
+              {/* Trial Indication Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm mb-4">
+                <span className="w-2 h-2 rounded-full bg-[#7fffd4] animate-pulse" />
+                <span className="text-[#7fffd4] text-xs font-extrabold uppercase tracking-widest">
+                  45-MIN TRIAL SESSION • 30 AED SPECIAL
+                </span>
               </div>
 
-              {/* Right: Visual card */}
-              <div className="relative flex justify-center lg:justify-end">
-                <div className="relative w-full max-w-sm">
-                  {/* Trial pass card */}
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-8 shadow-2xl">
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <p className="text-white font-black text-base font-['Unbounded',sans-serif] tracking-wider">TRIAL PASS</p>
-                        <p className="text-[#7fffd4] text-xs font-semibold">Skating Academy</p>
-                      </div>
-                      <div className="px-3 py-1 rounded-full bg-white/15 border border-white/20 text-[#7fffd4] text-[10px] font-black uppercase tracking-widest">
-                        Official Pass
-                      </div>
-                    </div>
+              {/* Trial Indication Heading */}
+              <h2 className="font-['Unbounded',sans-serif] text-2xl sm:text-3xl font-black text-white uppercase tracking-tight mb-3">
+                Book Your <span className="text-[#7fffd4]">30 AED Skating Trial Class</span>
+              </h2>
 
-                    <div className="border-t border-white/20 pt-6 space-y-4">
-                      <div className="flex justify-between items-center">
-                        <span className="text-teal-200 text-xs uppercase tracking-wide">Duration</span>
-                        <span className="text-white font-bold text-sm">45 Minutes</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-teal-200 text-xs uppercase tracking-wide">Level</span>
-                        <span className="text-white font-bold text-sm">All Levels</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-teal-200 text-xs uppercase tracking-wide">Equipment</span>
-                        <span className="text-white font-bold text-sm">Included</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-teal-200 text-xs uppercase tracking-wide">Location</span>
-                        <span className="text-white font-bold text-sm">Al Nahiyan</span>
-                      </div>
-                    </div>
+              {/* Trial Indication Description */}
+              <p className="text-teal-100 text-xs sm:text-sm max-w-lg mb-6 font-medium leading-relaxed">
+                Experience your first 45-minute guided glide with 1:1 certified coaching. Complimented with sanitized rental skates & protective armor kit included.
+              </p>
 
-                    <div className="mt-6 pt-6 border-t border-white/20">
-                      <div className="flex justify-between items-end">
-                        <span className="text-teal-200 text-xs uppercase tracking-wide">Special Rate</span>
-                        <div className="text-right">
-                          <p className="text-white/50 text-xs line-through">AED 100</p>
-                          <div className="flex items-baseline justify-end gap-1">
-                            <span className="font-['Unbounded',sans-serif] text-3xl font-black text-[#7fffd4]">30</span>
-                            <span className="text-teal-200 text-xs font-bold uppercase">AED</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Direct button redirecting to FreeTrialPage */}
-                    <button
-                      onClick={() => {
-                        if (navigateTo) navigateTo('trial-skating');
-                        else window.location.hash = 'trial-skating';
-                        window.scrollTo({ top: 0, behavior: 'smooth' });
-                      }}
-                      className="mt-6 w-full py-3.5 px-4 rounded-2xl bg-[#7fffd4] hover:bg-white text-[#004d45] font-black text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 transition-all group"
-                    >
-                      <span>Book 30 AED Trial Now</span>
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </button>
-                  </div>
-
-                  {/* Floating badge */}
-                  <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-[#7fffd4] flex items-center justify-center shadow-xl border-4 border-white">
-                    <div className="text-center">
-                      <p className="text-[#004d45] font-black text-xs leading-none">30 AED</p>
-                      <p className="text-[#004d45] font-bold text-[9px] uppercase leading-none mt-0.5">SPECIAL</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* Prominent Booking Button */}
+              <button
+                onClick={() => {
+                  if (navigateTo) navigateTo('trial-skating');
+                  else window.location.hash = 'trial-skating';
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="inline-flex items-center gap-2.5 px-8 py-4 rounded-full bg-white hover:bg-[#7fffd4] text-[#004d45] font-black text-xs sm:text-sm uppercase tracking-wider shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-600 group-hover:rotate-12 transition-transform" />
+                <span>Book 30 AED Trial Class</span>
+                <ArrowRight className="w-4 h-4 text-emerald-600 group-hover:translate-x-1 transition-transform" />
+              </button>
 
             </div>
           </div>
@@ -728,30 +652,32 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
                 {/* Package label */}
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-100 mb-5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#20b2aa]" />
-                  <span className="text-[#008080] text-[11px] font-extrabold uppercase tracking-widest">Starter</span>
+                  <span className="text-[#008080] text-[11px] font-extrabold uppercase tracking-widest">{pkg1.badgeText || 'Starter'}</span>
                 </div>
-                <h3 className="font-['Unbounded',sans-serif] text-xl font-black text-slate-900 mb-1">1 Month</h3>
-                <p className="text-slate-400 text-xs mb-6">Perfect for beginners & trial commitment</p>
+                <h3 className="font-['Unbounded',sans-serif] text-xl font-black text-slate-900 mb-1">{pkg1.shortTitle || '1 Month'}</h3>
+                <p className="text-slate-400 text-xs mb-6">{pkg1.subtitle || 'Perfect for beginners & trial commitment'}</p>
 
                 {/* Price display */}
                 <div className="mb-6">
                   <div className="flex items-end gap-2">
-                    <span className="font-['Unbounded',sans-serif] text-5xl font-black text-slate-900 leading-none">450</span>
+                    <span className="font-['Unbounded',sans-serif] text-5xl font-black text-slate-900 leading-none">{pkg1.priceAED}</span>
                     <div className="mb-1">
                       <span className="text-slate-500 text-sm font-bold">AED</span>
                       <p className="text-slate-400 text-[11px]">/ package</p>
                     </div>
                   </div>
-                  <p className="text-slate-400 text-xs mt-2">Total with uniform: <strong className="text-slate-700">AED 500</strong></p>
+                  <p className="text-slate-400 text-xs mt-2">
+                    Total with uniform: <strong className="text-slate-700">AED {Number(pkg1.priceAED) + (Number(pkg1.uniformFeeAED) || 50)}</strong>
+                  </p>
                 </div>
 
                 {/* Features */}
                 <div className="space-y-3 mb-8">
                   {[
-                    { label: 'Classes', value: '8 Sessions' },
-                    { label: 'Validity', value: '1 Month' },
-                    { label: 'Package Price', value: 'AED 450' },
-                    { label: 'Uniform', value: 'AED 50' },
+                    { label: 'Classes', value: pkg1.classesLabel || `${pkg1.classesCount || 8} Sessions` },
+                    { label: 'Validity', value: pkg1.validityLabel || `${pkg1.validityDays || 30} Days` },
+                    { label: 'Package Price', value: `AED ${pkg1.priceAED}` },
+                    { label: 'Uniform', value: `AED ${pkg1.uniformFeeAED || 50}` },
                     { label: 'Registration', value: 'FREE' },
                   ].map((f, i) => (
                     <div key={i} className="flex items-center justify-between py-2 border-b border-slate-100">
@@ -764,7 +690,9 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
                 {/* Total */}
                 <div className="bg-teal-50 rounded-2xl p-4 mb-6 flex items-center justify-between">
                   <span className="text-[#008080] text-sm font-bold uppercase tracking-wide">Total</span>
-                  <span className="font-['Unbounded',sans-serif] text-2xl font-black text-[#004d45]">AED 500</span>
+                  <span className="font-['Unbounded',sans-serif] text-2xl font-black text-[#004d45]">
+                    AED {Number(pkg1.priceAED) + (Number(pkg1.uniformFeeAED) || 50)}
+                  </span>
                 </div>
 
                 <button
@@ -781,7 +709,7 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
               
               {/* MOST POPULAR badge */}
               <div className="absolute top-5 right-5 bg-[#7fffd4] text-[#004d45] text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">
-                Most Popular
+                {pkg2.badgeText || 'Most Popular'}
               </div>
 
               {/* Decorative orb */}
@@ -793,34 +721,42 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
                   <span className="w-1.5 h-1.5 rounded-full bg-[#7fffd4]" />
                   <span className="text-[#7fffd4] text-[11px] font-extrabold uppercase tracking-widest">Best Value</span>
                 </div>
-                <h3 className="font-['Unbounded',sans-serif] text-xl font-black text-white mb-1">2 Months</h3>
-                <p className="text-teal-200 text-xs mb-6">Ideal for building real skating skills</p>
+                <h3 className="font-['Unbounded',sans-serif] text-xl font-black text-white mb-1">{pkg2.shortTitle || '2 Months'}</h3>
+                <p className="text-teal-200 text-xs mb-6">{pkg2.subtitle || 'Ideal for building real skating skills'}</p>
 
                 {/* Price display */}
                 <div className="mb-6">
                   <div className="flex items-end gap-2">
-                    <span className="font-['Unbounded',sans-serif] text-5xl font-black text-white leading-none">750</span>
+                    <span className="font-['Unbounded',sans-serif] text-5xl font-black text-white leading-none">{pkg2.priceAED}</span>
                     <div className="mb-1">
                       <span className="text-teal-200 text-sm font-bold">AED</span>
                       <p className="text-teal-300 text-[11px]">/ package</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-teal-300 text-xs line-through">AED 900</span>
-                    <span className="bg-[#7fffd4] text-[#004d45] text-[10px] font-black px-2 py-0.5 rounded-full">SAVE AED 150</span>
+                    {pkg2.originalPriceAED && pkg2.originalPriceAED > pkg2.priceAED && (
+                      <span className="text-teal-300 text-xs line-through">AED {pkg2.originalPriceAED}</span>
+                    )}
+                    {pkg2.originalPriceAED && pkg2.originalPriceAED > pkg2.priceAED && (
+                      <span className="bg-[#7fffd4] text-[#004d45] text-[10px] font-black px-2 py-0.5 rounded-full">
+                        SAVE AED {pkg2.originalPriceAED - pkg2.priceAED}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-teal-200 text-xs mt-1">Total with uniform: <strong className="text-white">AED 800</strong></p>
+                  <p className="text-teal-200 text-xs mt-1">
+                    Total with uniform: <strong className="text-white">AED {Number(pkg2.priceAED) + (Number(pkg2.uniformFeeAED) || 50)}</strong>
+                  </p>
                 </div>
 
                 {/* Features */}
                 <div className="space-y-3 mb-8">
                   {[
-                    { label: 'Classes', value: '16 Sessions' },
-                    { label: 'Validity', value: '2 Months' },
-                    { label: 'Current Price', value: 'AED 750' },
-                    { label: 'Regular Price', value: 'AED 900', strike: true },
-                    { label: 'You Save', value: 'AED 150', highlight: true },
-                    { label: 'Uniform', value: 'AED 50' },
+                    { label: 'Classes', value: pkg2.classesLabel || `${pkg2.classesCount || 16} Sessions` },
+                    { label: 'Validity', value: pkg2.validityLabel || `${pkg2.validityDays || 60} Days` },
+                    { label: 'Current Price', value: `AED ${pkg2.priceAED}` },
+                    { label: 'Regular Price', value: `AED ${pkg2.originalPriceAED || (Number(pkg2.priceAED) + 150)}`, strike: true },
+                    { label: 'You Save', value: `AED ${Math.max(0, (pkg2.originalPriceAED || (Number(pkg2.priceAED) + 150)) - Number(pkg2.priceAED))}`, highlight: true },
+                    { label: 'Uniform', value: `AED ${pkg2.uniformFeeAED || 50}` },
                     { label: 'Registration', value: 'FREE', green: true },
                   ].map((f, i) => (
                     <div key={i} className="flex items-center justify-between py-2 border-b border-white/10">
@@ -833,7 +769,9 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
                 {/* Total */}
                 <div className="bg-white/10 rounded-2xl p-4 mb-6 flex items-center justify-between border border-white/20">
                   <span className="text-teal-200 text-sm font-bold uppercase tracking-wide">Total</span>
-                  <span className="font-['Unbounded',sans-serif] text-2xl font-black text-white">AED 800</span>
+                  <span className="font-['Unbounded',sans-serif] text-2xl font-black text-white">
+                    AED {Number(pkg2.priceAED) + (Number(pkg2.uniformFeeAED) || 50)}
+                  </span>
                 </div>
 
                 <button
@@ -857,36 +795,44 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
                 {/* Package label */}
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 mb-5">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                  <span className="text-amber-400 text-[11px] font-extrabold uppercase tracking-widest">Premium</span>
+                  <span className="text-amber-400 text-[11px] font-extrabold uppercase tracking-widest">{pkg3.badgeText || 'Premium'}</span>
                 </div>
-                <h3 className="font-['Unbounded',sans-serif] text-xl font-black text-white mb-1">3 Months</h3>
-                <p className="text-slate-400 text-xs mb-6">Unlimited access — maximum progress</p>
+                <h3 className="font-['Unbounded',sans-serif] text-xl font-black text-white mb-1">{pkg3.shortTitle || '3 Months'}</h3>
+                <p className="text-slate-400 text-xs mb-6">{pkg3.subtitle || 'Unlimited access — maximum progress'}</p>
 
                 {/* Price display */}
                 <div className="mb-6">
                   <div className="flex items-end gap-2">
-                    <span className="font-['Unbounded',sans-serif] text-5xl font-black text-white leading-none">1,000</span>
+                    <span className="font-['Unbounded',sans-serif] text-5xl font-black text-white leading-none">{pkg3.priceAED}</span>
                     <div className="mb-1">
                       <span className="text-slate-400 text-sm font-bold">AED</span>
                       <p className="text-slate-500 text-[11px]">/ package</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="text-slate-500 text-xs line-through">AED 1,300</span>
-                    <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">SAVE AED 300</span>
+                    {pkg3.originalPriceAED && pkg3.originalPriceAED > pkg3.priceAED && (
+                      <span className="text-slate-500 text-xs line-through">AED {pkg3.originalPriceAED}</span>
+                    )}
+                    {pkg3.originalPriceAED && pkg3.originalPriceAED > pkg3.priceAED && (
+                      <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">
+                        SAVE AED {pkg3.originalPriceAED - pkg3.priceAED}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-slate-400 text-xs mt-1">Total with uniform: <strong className="text-white">AED 1,050</strong></p>
+                  <p className="text-slate-400 text-xs mt-1">
+                    Total with uniform: <strong className="text-white">AED {Number(pkg3.priceAED) + (Number(pkg3.uniformFeeAED) || 50)}</strong>
+                  </p>
                 </div>
 
                 {/* Features */}
                 <div className="space-y-3 mb-8">
                   {[
-                    { label: 'Classes', value: 'Unlimited' },
-                    { label: 'Validity', value: '3 Months' },
-                    { label: 'Current Price', value: 'AED 1,000' },
-                    { label: 'Regular Price', value: 'AED 1,300', strike: true },
-                    { label: 'You Save', value: 'AED 300', highlight: true },
-                    { label: 'Uniform', value: 'AED 50' },
+                    { label: 'Classes', value: pkg3.classesLabel || (pkg3.classesCount === 999 ? 'Unlimited' : `${pkg3.classesCount || 24} Sessions`) },
+                    { label: 'Validity', value: pkg3.validityLabel || `${pkg3.validityDays || 90} Days` },
+                    { label: 'Current Price', value: `AED ${pkg3.priceAED}` },
+                    { label: 'Regular Price', value: `AED ${pkg3.originalPriceAED || (Number(pkg3.priceAED) + 300)}`, strike: true },
+                    { label: 'You Save', value: `AED ${Math.max(0, (pkg3.originalPriceAED || (Number(pkg3.priceAED) + 300)) - Number(pkg3.priceAED))}`, highlight: true },
+                    { label: 'Uniform', value: `AED ${pkg3.uniformFeeAED || 50}` },
                     { label: 'Registration', value: 'FREE', green: true },
                   ].map((f, i) => (
                     <div key={i} className="flex items-center justify-between py-2 border-b border-white/10">
@@ -899,7 +845,9 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
                 {/* Total */}
                 <div className="bg-amber-500/15 rounded-2xl p-4 mb-6 flex items-center justify-between border border-amber-500/30">
                   <span className="text-amber-400 text-sm font-bold uppercase tracking-wide">Total</span>
-                  <span className="font-['Unbounded',sans-serif] text-2xl font-black text-white">AED 1,050</span>
+                  <span className="font-['Unbounded',sans-serif] text-2xl font-black text-white">
+                    AED {Number(pkg3.priceAED) + (Number(pkg3.uniformFeeAED) || 50)}
+                  </span>
                 </div>
 
                 <button
@@ -961,7 +909,7 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
             WHAT CLIENT SAY
           </h2>
 
-          {/* 3 Review Cards */}
+          {/* 6 Review Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
             {/* Review 1: Sarah Khan */}
@@ -1045,6 +993,87 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
               </div>
             </div>
 
+            {/* Review 4: Mariam Hassan */}
+            <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all flex flex-col items-center text-center">
+              <div className="w-20 h-20 rounded-full ring-4 ring-lime-400 p-0.5 overflow-hidden mb-6 shadow-md">
+                <img 
+                  src="/images/skating_angels/avatar_mariam.jpg" 
+                  alt="Mariam Hassan" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex items-center gap-1 text-amber-400 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-current" />
+                ))}
+              </div>
+              <p className="text-sm text-slate-600 italic leading-relaxed mb-6">
+                "The 30 AED trial class was the best decision! My twin boys gained so much balance and confidence on the rink in just one session."
+              </p>
+              <div className="mt-auto">
+                <h4 className="font-['Unbounded',sans-serif] text-base font-bold text-slate-900">
+                  Mariam Hassan
+                </h4>
+                <p className="text-xs font-medium text-slate-400 mt-0.5">
+                  Parent & Fitness Enthusiast
+                </p>
+              </div>
+            </div>
+
+            {/* Review 5: David Miller */}
+            <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all flex flex-col items-center text-center">
+              <div className="w-20 h-20 rounded-full ring-4 ring-lime-400 p-0.5 overflow-hidden mb-6 shadow-md">
+                <img 
+                  src="/images/skating_angels/avatar_david.jpg" 
+                  alt="David Miller" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex items-center gap-1 text-amber-400 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-current" />
+                ))}
+              </div>
+              <p className="text-sm text-slate-600 italic leading-relaxed mb-6">
+                "Top-tier equipment, pristine facilities, and world-class safety protocols. The 1:1 coaching made learning smooth and rewarding."
+              </p>
+              <div className="mt-auto">
+                <h4 className="font-['Unbounded',sans-serif] text-base font-bold text-slate-900">
+                  David Miller
+                </h4>
+                <p className="text-xs font-medium text-slate-400 mt-0.5">
+                  Adult Beginner Skater
+                </p>
+              </div>
+            </div>
+
+            {/* Review 6: Zayed Al Mansoori */}
+            <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all flex flex-col items-center text-center">
+              <div className="w-20 h-20 rounded-full ring-4 ring-lime-400 p-0.5 overflow-hidden mb-6 shadow-md">
+                <img 
+                  src="/images/skating_angels/avatar_zayed.jpg" 
+                  alt="Zayed Al Mansoori" 
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex items-center gap-1 text-amber-400 mb-4">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-current" />
+                ))}
+              </div>
+              <p className="text-sm text-slate-600 italic leading-relaxed mb-6">
+                "Outstanding atmosphere in Al Nahiyan! The step-by-step 10-level program keeps my kids motivated every single week."
+              </p>
+              <div className="mt-auto">
+                <h4 className="font-['Unbounded',sans-serif] text-base font-bold text-slate-900">
+                  Zayed Al Mansoori
+                </h4>
+                <p className="text-xs font-medium text-slate-400 mt-0.5">
+                  Academy Parent & Member
+                </p>
+              </div>
+            </div>
+
           </div>
 
         </div>
@@ -1103,49 +1132,65 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
                       value={appointmentName}
                       onChange={(e) => setAppointmentName(e.target.value)}
                       placeholder="e.g. Maya Al-Nuaimi"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#20b2aa] focus:ring-1 focus:ring-[#20b2aa]"
+                      style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 bg-white focus:outline-none focus:border-[#20b2aa] focus:ring-1 focus:ring-[#20b2aa]"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                      Phone Number (WhatsApp)
-                    </label>
-                    <input 
-                      type="tel" 
-                      required
-                      value={appointmentPhone}
-                      onChange={(e) => setAppointmentPhone(e.target.value)}
-                      placeholder="+971 52 578 7989"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#20b2aa] focus:ring-1 focus:ring-[#20b2aa]"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                        Preferred Date
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-xs font-bold text-slate-700 uppercase">
+                        Phone Number (9 Digits) *
                       </label>
-                      <AppointmentCalendar
-                        value={appointmentDate}
-                        onChange={(newDate) => setAppointmentDate(newDate)}
+                      <span className="text-[10px] text-slate-500 font-semibold">
+                        {appointmentPhone.length}/9
+                      </span>
+                    </div>
+                    <div className={`flex items-center rounded-xl border overflow-hidden bg-white ${phoneError ? 'border-rose-500' : 'border-slate-300 focus-within:border-[#20b2aa] focus-within:ring-1 focus-within:ring-[#20b2aa]'}`}>
+                      <div className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 text-slate-700 font-bold text-xs border-r border-slate-300 shrink-0">
+                        <Phone className="w-3.5 h-3.5 text-[#20b2aa]" />
+                        <span>+971</span>
+                      </div>
+                      <input 
+                        type="tel" 
+                        required 
+                        maxLength={9}
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={appointmentPhone}
+                        onChange={(e) => {
+                          const digits = format10DigitPhone(e.target.value);
+                          setAppointmentPhone(digits);
+                          if (phoneError) setPhoneError('');
+                        }}
+                        placeholder="50 123 4567"
+                        style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
+                        className="w-full px-3 py-2.5 text-sm text-slate-900 bg-white focus:outline-none"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                        Service
-                      </label>
-                      <select 
-                        value={appointmentService}
-                        onChange={(e) => setAppointmentService(e.target.value)}
-                        className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-[#20b2aa]"
-                      >
-                        <option>Skating Training Program (10-Level)</option>
-                        <option>Weekend Fun Glide Admission</option>
-                        <option>1-on-1 Private Coaching</option>
-                        <option>Skate Gear & Equipment Fitting</option>
-                      </select>
-                    </div>
+                    {phoneError && (
+                      <div className="flex items-center gap-1 text-rose-500 text-xs mt-1 font-semibold">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{phoneError}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                      Service
+                    </label>
+                    <select 
+                      value={appointmentService}
+                      onChange={(e) => setAppointmentService(e.target.value)}
+                      style={{ color: '#0f172a', backgroundColor: '#ffffff' }}
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm text-slate-900 bg-white focus:outline-none focus:border-[#20b2aa] focus:ring-1 focus:ring-[#20b2aa]"
+                    >
+                      <option>Skating Training Program (10-Level)</option>
+                      <option>Weekend Fun Glide Admission</option>
+                      <option>1-on-1 Private Coaching</option>
+                      <option>Skate Gear & Equipment Fitting</option>
+                    </select>
                   </div>
 
                   <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">

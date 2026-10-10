@@ -12,6 +12,7 @@ import {
   Flame,
   ArrowRight
 } from 'lucide-react';
+import StrategyLogo, { StrategyIcon } from './StrategyLogo';
 
 export default function Navbar({
   activeTab = 'home',
@@ -97,25 +98,13 @@ export default function Navbar({
 
               <button
                 onClick={() => handleNavClick('home')}
-                className="flex items-center gap-2.5 text-left group cursor-pointer focus:outline-none"
+                className="flex items-center text-left group cursor-pointer focus:outline-none"
               >
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-lg tracking-tighter transition-all duration-300 shadow-md ${
-                  isScrolled 
-                    ? 'bg-blue-600 text-white group-hover:bg-blue-700' 
-                    : 'bg-white text-blue-900 group-hover:scale-105'
-                }`}>
-                  S
-                </div>
-                <div>
-                  <span className={`text-xl sm:text-2xl font-black tracking-wider transition-colors ${
-                    isScrolled ? 'text-slate-950' : 'text-white'
-                  }`}>
-                    STRATEGY
-                  </span>
-                  <span className="hidden sm:block text-[9px] uppercase tracking-widest font-extrabold text-blue-500 -mt-1">
-                    Athletics & Gear
-                  </span>
-                </div>
+                <StrategyLogo 
+                  variant="full" 
+                  theme={isScrolled ? 'light' : 'dark'}
+                  size="md"
+                />
               </button>
             </div>
 
@@ -234,14 +223,15 @@ export default function Navbar({
           <div className="relative w-4/5 max-w-sm bg-white text-slate-900 h-full shadow-2xl flex flex-col z-10 p-6 overflow-y-auto">
             {/* Drawer Header */}
             <div className="flex items-center justify-between pb-5 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black flex items-center justify-center text-base">
-                  S
-                </div>
-                <span className="text-xl font-black tracking-wider text-slate-900">
-                  STRATEGY
-                </span>
-              </div>
+              <StrategyLogo 
+                variant="full" 
+                theme="light"
+                size="md"
+                onClick={() => {
+                  handleNavClick('home');
+                  setMobileMenuOpen(false);
+                }}
+              />
               <button
                 onClick={() => setMobileMenuOpen(false)}
                 className="p-2 rounded-lg text-slate-500 hover:bg-slate-100"

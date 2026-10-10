@@ -8,6 +8,7 @@ import {
   Sparkles,
   Award
 } from 'lucide-react';
+import StrategyLogo from './StrategyLogo';
 
 function InstagramIcon({ className = "w-4 h-4" }) {
   return (
@@ -45,7 +46,47 @@ function YoutubeIcon({ className = "w-4 h-4" }) {
   );
 }
 
-export default function Footer({ onNavigate }) {
+export default function Footer({ onNavigate, navigateTo, setActiveTab, openTrialModal }) {
+  const handleNav = (tab) => {
+    // 1. Handle special internal section jump for About
+    if (tab === 'about-strategy' || tab === 'sec-about-strategy' || tab === 'about') {
+      const el = document.getElementById('sec-about-strategy');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+        return;
+      }
+    }
+
+    // 2. Invoke whichever navigation prop is provided by parent
+    if (typeof onNavigate === 'function') {
+      onNavigate(tab);
+    } else if (typeof navigateTo === 'function') {
+      navigateTo(tab);
+    } else if (typeof setActiveTab === 'function') {
+      setActiveTab(tab);
+    }
+
+    // 3. Fallback: Always ensure window.location.hash and scroll behavior
+    if (typeof window !== 'undefined') {
+      if (tab === 'about-strategy' || tab === 'sec-about-strategy' || tab === 'about') {
+        const targetHash = '#shop-home';
+        if (window.location.hash !== targetHash) {
+          window.location.hash = 'shop-home';
+        }
+        setTimeout(() => {
+          const el = document.getElementById('sec-about-strategy');
+          if (el) el.scrollIntoView({ behavior: 'smooth' });
+        }, 150);
+      } else {
+        const targetHash = tab === 'home' ? '' : `#${tab}`;
+        if (window.location.hash !== targetHash) {
+          window.location.hash = tab;
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
+  };
+
   const shopLinks = [
     { label: 'All Products', tab: 'shop' },
     { label: 'New Arrivals', tab: 'shop-new' },
@@ -67,7 +108,8 @@ export default function Footer({ onNavigate }) {
     { label: 'About Strategy', tab: 'about-strategy' },
     { label: 'Our Story', tab: 'about-strategy' },
     { label: 'Contact Support', tab: 'contact' },
-    { label: 'Careers', tab: 'careers' }
+    { label: 'Careers', tab: 'careers' },
+    { label: 'Admin Control Center', tab: 'admin' }
   ];
 
   const serviceLinks = [
@@ -87,13 +129,11 @@ export default function Footer({ onNavigate }) {
           
           {/* Brand Column (Spans 2 cols on lg) */}
           <div className="col-span-2">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center text-lg shadow-md">
-                S
-              </div>
-              <span className="text-2xl font-black tracking-wider text-white">
-                STRATEGY
-              </span>
+            <div 
+              onClick={() => handleNav('shop-home')}
+              className="mb-4 cursor-pointer group w-fit"
+            >
+              <StrategyLogo variant="full" theme="dark" size="lg" />
             </div>
 
             <p className="text-sm text-slate-400 font-medium leading-relaxed max-w-sm mb-6">
@@ -102,30 +142,38 @@ export default function Footer({ onNavigate }) {
 
             <div className="flex items-center gap-3 text-slate-400">
               <a 
-                href="#instagram" 
+                href="https://instagram.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="Instagram"
-                className="w-9 h-9 rounded-xl bg-slate-900 hover:bg-blue-600 hover:text-white flex items-center justify-center border border-slate-800 transition-colors"
+                className="w-9 h-9 rounded-xl bg-slate-900 hover:bg-blue-600 hover:text-white flex items-center justify-center border border-slate-800 transition-colors cursor-pointer"
               >
                 <InstagramIcon className="w-4 h-4" />
               </a>
               <a 
-                href="#facebook" 
+                href="https://facebook.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="Facebook"
-                className="w-9 h-9 rounded-xl bg-slate-900 hover:bg-blue-600 hover:text-white flex items-center justify-center border border-slate-800 transition-colors"
+                className="w-9 h-9 rounded-xl bg-slate-900 hover:bg-blue-600 hover:text-white flex items-center justify-center border border-slate-800 transition-colors cursor-pointer"
               >
                 <FacebookIcon className="w-4 h-4" />
               </a>
               <a 
-                href="#twitter" 
-                aria-label="Twitter"
-                className="w-9 h-9 rounded-xl bg-slate-900 hover:bg-blue-600 hover:text-white flex items-center justify-center border border-slate-800 transition-colors"
+                href="https://x.com" 
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Twitter / X"
+                className="w-9 h-9 rounded-xl bg-slate-900 hover:bg-blue-600 hover:text-white flex items-center justify-center border border-slate-800 transition-colors cursor-pointer"
               >
                 <TwitterIcon className="w-4 h-4" />
               </a>
               <a 
-                href="#youtube" 
+                href="https://youtube.com" 
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="YouTube"
-                className="w-9 h-9 rounded-xl bg-slate-900 hover:bg-blue-600 hover:text-white flex items-center justify-center border border-slate-800 transition-colors"
+                className="w-9 h-9 rounded-xl bg-slate-900 hover:bg-blue-600 hover:text-white flex items-center justify-center border border-slate-800 transition-colors cursor-pointer"
               >
                 <YoutubeIcon className="w-4 h-4" />
               </a>
@@ -140,12 +188,16 @@ export default function Footer({ onNavigate }) {
             <ul className="space-y-2.5 text-xs sm:text-sm font-medium">
               {shopLinks.map((link) => (
                 <li key={link.label}>
-                  <button
-                    onClick={() => onNavigate && onNavigate(link.tab)}
-                    className="text-slate-400 hover:text-blue-400 transition-colors cursor-pointer text-left"
+                  <a
+                    href={`#${link.tab}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNav(link.tab);
+                    }}
+                    className="text-slate-400 hover:text-blue-400 transition-colors cursor-pointer text-left block"
                   >
                     {link.label}
-                  </button>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -159,12 +211,16 @@ export default function Footer({ onNavigate }) {
             <ul className="space-y-2.5 text-xs sm:text-sm font-medium">
               {sportsLinks.map((link) => (
                 <li key={link.label}>
-                  <button
-                    onClick={() => onNavigate && onNavigate(link.tab)}
-                    className="text-slate-400 hover:text-blue-400 transition-colors cursor-pointer text-left"
+                  <a
+                    href={`#${link.tab}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNav(link.tab);
+                    }}
+                    className="text-slate-400 hover:text-blue-400 transition-colors cursor-pointer text-left block"
                   >
                     {link.label}
-                  </button>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -178,12 +234,16 @@ export default function Footer({ onNavigate }) {
             <ul className="space-y-2.5 text-xs sm:text-sm font-medium mb-6">
               {companyLinks.map((link) => (
                 <li key={link.label}>
-                  <button
-                    onClick={() => onNavigate && onNavigate(link.tab)}
-                    className="text-slate-400 hover:text-blue-400 transition-colors cursor-pointer text-left"
+                  <a
+                    href={`#${link.tab}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNav(link.tab);
+                    }}
+                    className="text-slate-400 hover:text-blue-400 transition-colors cursor-pointer text-left block"
                   >
                     {link.label}
-                  </button>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -194,12 +254,16 @@ export default function Footer({ onNavigate }) {
             <ul className="space-y-2 text-xs text-slate-400">
               {serviceLinks.map((link) => (
                 <li key={link.label}>
-                  <button
-                    onClick={() => onNavigate && onNavigate(link.tab)}
-                    className="hover:text-blue-400 transition-colors cursor-pointer text-left"
+                  <a
+                    href={`#${link.tab}`}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNav(link.tab);
+                    }}
+                    className="hover:text-blue-400 transition-colors cursor-pointer text-left block"
                   >
                     {link.label}
-                  </button>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -211,17 +275,20 @@ export default function Footer({ onNavigate }) {
               CONTACT
             </h4>
             <div className="space-y-3 text-xs sm:text-sm font-medium text-slate-400">
-              <div className="flex items-start gap-2.5">
+              <div 
+                onClick={() => handleNav('contact')}
+                className="flex items-start gap-2.5 cursor-pointer hover:text-slate-200 transition-colors"
+              >
                 <MapPin className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                 <span>Al Nahyan & Marina Arenas, Abu Dhabi / Dubai, UAE</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-blue-500 shrink-0" />
-                <span>+971 50 123 4567</span>
+                <a href="tel:+971501234567" className="hover:text-blue-400 transition-colors">+971 50 123 4567</a>
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-blue-500 shrink-0" />
-                <span>support@strategy.com</span>
+                <a href="mailto:support@strategy.com" className="hover:text-blue-400 transition-colors">support@strategy.com</a>
               </div>
 
               <div className="pt-2">
@@ -241,18 +308,34 @@ export default function Footer({ onNavigate }) {
             © 2026 STRATEGY. All Rights Reserved. Engineered for champions.
           </div>
           <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-            <button onClick={() => onNavigate && onNavigate('returns')} className="hover:text-slate-300 transition-colors cursor-pointer font-bold text-blue-400">
+            <a 
+              href="#returns" 
+              onClick={(e) => { e.preventDefault(); handleNav('returns'); }} 
+              className="hover:text-slate-300 transition-colors cursor-pointer font-bold text-blue-400"
+            >
               3-Day Return Policy
-            </button>
-            <button onClick={() => onNavigate && onNavigate('privacy')} className="hover:text-slate-300 transition-colors cursor-pointer">
+            </a>
+            <a 
+              href="#privacy" 
+              onClick={(e) => { e.preventDefault(); handleNav('privacy'); }} 
+              className="hover:text-slate-300 transition-colors cursor-pointer"
+            >
               Privacy Policy
-            </button>
-            <button onClick={() => onNavigate && onNavigate('terms')} className="hover:text-slate-300 transition-colors cursor-pointer">
+            </a>
+            <a 
+              href="#terms" 
+              onClick={(e) => { e.preventDefault(); handleNav('terms'); }} 
+              className="hover:text-slate-300 transition-colors cursor-pointer"
+            >
               Terms & Conditions
-            </button>
-            <button onClick={() => onNavigate && onNavigate('shipping')} className="hover:text-slate-300 transition-colors cursor-pointer">
+            </a>
+            <a 
+              href="#shipping" 
+              onClick={(e) => { e.preventDefault(); handleNav('shipping'); }} 
+              className="hover:text-slate-300 transition-colors cursor-pointer"
+            >
               Shipping & Delivery
-            </button>
+            </a>
           </div>
         </div>
 

@@ -3,6 +3,7 @@ import {
   ShoppingCart, Search, Star, Heart, User, ChevronDown, 
   Truck, RefreshCw, Lock, Headset, ArrowRight, Play
 } from 'lucide-react';
+import StrategyLogo from './StrategyLogo';
 
 const MOCK_PRODUCTS = [
   {
@@ -132,11 +133,8 @@ export default function ProShopPage({ onAddToCart }) {
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-6">
           
           {/* Brand Logo */}
-          <div className="flex items-center gap-3 text-3xl font-black tracking-tighter shrink-0 cursor-pointer">
-            <div className="w-10 h-10 bg-black text-white flex items-center justify-center -skew-x-12 shadow-lg">
-              <span className="skew-x-12">S</span>
-            </div>
-            STRATEGY <span className="text-gray-300 font-light ml-1">PRO</span>
+          <div className="flex items-center shrink-0 cursor-pointer">
+            <StrategyLogo variant="full" theme="light" size="lg" />
           </div>
 
           {/* Search (Sleek & Minimal) */}

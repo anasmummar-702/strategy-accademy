@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
-  X, Heart, Trash2, ShoppingBag, ArrowRight, Eye, 
-  Sparkles, Star, ShieldCheck, Check, ChevronRight, Flame 
+  X, Heart, Trash2, ShoppingBag, ArrowRight, 
+  Sparkles, Star, Check 
 } from 'lucide-react';
 
 export default function WishlistDrawer({
@@ -174,13 +174,13 @@ export default function WishlistDrawer({
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-sm font-black text-slate-900">
-                          ${itemPrice.toFixed(2)}
+                          ${(typeof itemPrice === 'number' ? itemPrice : (parseFloat(itemPrice) || 0)).toFixed(2)}
                         </span>
-                        {oldPrice > itemPrice && (
+                        {oldPrice && oldPrice > itemPrice ? (
                           <span className="text-[11px] text-slate-400 line-through">
-                            ${oldPrice.toFixed(2)}
+                            ${(typeof oldPrice === 'number' ? oldPrice : (parseFloat(oldPrice) || 0)).toFixed(2)}
                           </span>
-                        )}
+                        ) : null}
                       </div>
 
                       {/* Action buttons: Move to Cart, Trash */}
@@ -234,47 +234,11 @@ export default function WishlistDrawer({
 
               <button
                 onClick={() => handleBrowseCollection('shop')}
-                className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-600/30 transition-all cursor-pointer mb-8"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
               >
                 <span>Browse All Products</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
-
-              {/* Quick Jump Category Cards */}
-              <div className="w-full pt-6 border-t border-slate-100 text-left">
-                <div className="flex items-center gap-1.5 mb-2.5">
-                  <Flame className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-600">
-                    Trending Categories
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { label: '🏀 Basketball Gear', tab: 'basketball' },
-                    { label: '🛼 Precision Skates', tab: 'skating' },
-                    { label: '👟 Men’s Pro Gear', tab: 'men' },
-                    { label: '✨ Special Edition', tab: 'special-edition' }
-                  ].map((cat) => (
-                    <button
-                      key={cat.label}
-                      onClick={() => handleBrowseCollection(cat.tab)}
-                      className="px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-blue-50 border border-slate-200/80 hover:border-blue-300 text-left text-xs font-bold text-slate-700 hover:text-blue-600 transition-colors cursor-pointer flex items-center justify-between"
-                    >
-                      <span>{cat.label}</span>
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Value Reassurance */}
-              <div className="w-full mt-6 p-3.5 rounded-2xl bg-blue-50/70 border border-blue-200/60 text-left flex items-start gap-2.5">
-                <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-blue-900 leading-snug">
-                  <strong className="font-bold">STRATEGY Promise:</strong> Free 30-day exchange on all saved gear if the size isn't a perfect fit.
-                </p>
-              </div>
-
             </div>
           )}
         </div>

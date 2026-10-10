@@ -23,6 +23,7 @@ import ShippingPolicyPage from './components/ShippingPolicyPage';
 import FaqsPage from './components/FaqsPage';
 import CareersPage from './components/CareersPage';
 import ProductDetailPage from './components/ProductDetailPage';
+import AdminApp from './admin/AdminApp';
 import { CheckCircle2 } from 'lucide-react';
 
 export default function App() {
@@ -199,6 +200,13 @@ export default function App() {
 
   // Helper to test if activeTab is a dedicated product detail page
   const isProductView = activeTab === 'product' || activeTab.startsWith('product-');
+
+  // Helper to test if activeTab is Admin Control Center
+  const isAdminView = activeTab === 'admin' || activeTab.startsWith('admin');
+
+  if (isAdminView) {
+    return <AdminApp />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-transparent text-white selection:bg-blue-600 selection:text-white font-['Plus_Jakarta_Sans',sans-serif]">
@@ -431,6 +439,8 @@ export default function App() {
        activeTab !== 'faqs' && 
        activeTab !== 'careers' && (
         <Footer
+          onNavigate={navigateTo}
+          navigateTo={navigateTo}
           setActiveTab={setActiveTab}
           openTrialModal={goToTrial}
         />
@@ -444,6 +454,7 @@ export default function App() {
         updateQuantity={updateQuantity}
         removeItem={removeItem}
         clearCart={clearCart}
+        onAddToCart={addToCart}
         navigateTo={navigateTo}
       />
 

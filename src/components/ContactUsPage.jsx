@@ -6,6 +6,7 @@ import {
 import confetti from 'canvas-confetti';
 import Navbar from './Navbar';
 import Footer from './Footer';
+import { format10DigitPhone, validate10DigitPhone, validateGmail } from '../utils/validation';
 
 export default function ContactUsPage({ 
   navigateTo, 
@@ -16,6 +17,8 @@ export default function ContactUsPage({
   onOpenSearch 
 }) {
   const [submitted, setSubmitted] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -27,6 +30,23 @@ export default function ContactUsPage({
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    const emailVal = validateGmail(form.email);
+    if (!emailVal.isValid) {
+      setEmailError(emailVal.error);
+      return;
+    }
+    setEmailError('');
+
+    if (form.phone) {
+      const phoneVal = validate10DigitPhone(form.phone);
+      if (!phoneVal.isValid) {
+        setPhoneError(phoneVal.error);
+        return;
+      }
+    }
+    setPhoneError('');
+
     setSubmitted(true);
     try {
       confetti({
@@ -235,31 +255,64 @@ export default function ContactUsPage({
 
                     <div>
                       <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Email Address *
+                        Gmail Address (@gmail.com only) *
                       </label>
                       <input
                         type="email"
                         required
-                        placeholder="marcus@example.com"
+                        placeholder="marcus@gmail.com"
                         value={form.email}
-                        onChange={(e) => setForm({ ...form, email: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                        onChange={(e) => {
+                          setForm({ ...form, email: e.target.value });
+                          if (emailError) setEmailError('');
+                        }}
+                        className={`w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border text-xs sm:text-sm focus:outline-none focus:bg-white transition-all ${emailError ? 'border-rose-500 focus:ring-2 focus:ring-rose-500' : 'border-slate-200 focus:ring-2 focus:ring-blue-600'}`}
                       />
+                      {emailError && (
+                        <div className="flex items-center gap-1 text-rose-500 text-xs mt-1 font-semibold">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{emailError}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                        Phone / WhatsApp
-                      </label>
-                      <input
-                        type="tel"
-                        placeholder="+971 50 123 4567"
-                        value={form.phone}
-                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
-                      />
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
+                          Phone (9 Digits)
+                        </label>
+                        <span className="text-[10px] text-slate-400 font-semibold">
+                          {form.phone.length}/9
+                        </span>
+                      </div>
+                      <div className={`flex items-center rounded-xl bg-slate-50 border overflow-hidden transition-all ${phoneError ? 'border-rose-500 focus-within:ring-2 focus-within:ring-rose-500' : 'border-slate-200 focus-within:ring-2 focus-within:ring-blue-600 focus-within:bg-white'}`}>
+                        <div className="flex items-center gap-1 px-3 py-2.5 bg-slate-100 text-slate-700 font-bold text-xs border-r border-slate-200 shrink-0">
+                          <Phone className="w-3.5 h-3.5 text-blue-600" />
+                          <span>+971</span>
+                        </div>
+                        <input
+                          type="tel"
+                          maxLength={9}
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          placeholder="50 123 4567"
+                          value={form.phone}
+                          onChange={(e) => {
+                            const digits = format10DigitPhone(e.target.value);
+                            setForm({ ...form, phone: digits });
+                            if (phoneError) setPhoneError('');
+                          }}
+                          className="w-full px-3 py-2.5 text-xs sm:text-sm bg-transparent text-slate-900 focus:outline-none"
+                        />
+                      </div>
+                      {phoneError && (
+                        <div className="flex items-center gap-1 text-rose-500 text-xs mt-1 font-semibold">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{phoneError}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div>

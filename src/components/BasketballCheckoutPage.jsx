@@ -25,6 +25,8 @@ import {
   Tag,
   Share2
 } from 'lucide-react';
+import { format10DigitPhone, validate10DigitPhone, validateGmail } from '../utils/validation';
+import { getBasketballPackage } from '../utils/academyPackagesData';
 
 // Custom Styled Dark Dropdown to eliminate mobile OS white overflow glitch
 function CustomDropdown({ label, value, onChange, options }) {
@@ -160,8 +162,20 @@ function CustomDropdown({ label, value, onChange, options }) {
 }
 
 export default function BasketballCheckoutPage({ navigateTo }) {
+  // Dynamic Basketball Package State
+  const [bbPackage, setBbPackage] = useState(getBasketballPackage);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setBbPackage(getBasketballPackage());
+    };
+    window.addEventListener('strategy_packages_updated', handleUpdate);
+    return () => window.removeEventListener('strategy_packages_updated', handleUpdate);
+  }, []);
+
   // Step in checkout: 1: Details & Package Review, 2: Payment, 3: Confirmation Pass
   const [currentStep, setCurrentStep] = useState(1);
+
 
   // Form Fields
   const [fullName, setFullName] = useState('');
@@ -205,18 +219,17 @@ export default function BasketballCheckoutPage({ navigateTo }) {
       setNameError('');
     }
 
-    const emailTrimmed = email.trim();
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailTrimmed || !emailRegex.test(emailTrimmed)) {
-      setEmailError('Please enter a valid email address');
+    const emailVal = validateGmail(email);
+    if (!emailVal.isValid) {
+      setEmailError(emailVal.error);
       valid = false;
     } else {
       setEmailError('');
     }
 
-    const digitsOnly = phone.replace(/\D/g, '');
-    if (digitsOnly.length < 9 || digitsOnly.length > 13) {
-      setPhoneError('Please enter a valid contact/WhatsApp phone number (e.g. 0501234567)');
+    const phoneVal = validate10DigitPhone(phone);
+    if (!phoneVal.isValid) {
+      setPhoneError(phoneVal.error);
       valid = false;
     } else {
       setPhoneError('');
@@ -269,10 +282,10 @@ export default function BasketballCheckoutPage({ navigateTo }) {
       setIsProcessing(false);
       const ticket = {
         orderId: 'STR-BB-' + Math.floor(100000 + Math.random() * 900000),
-        packageName: '2 Months Basketball Coaching Package (16 Classes)',
-        regularPrice: '750 AED',
-        dealPrice: '500 AED',
-        savedAmount: '250 AED',
+        packageName: `${bbPackage.title || '2 Months Basketball Coaching Package'} (${bbPackage.classesCount || 16} Classes)`,
+        regularPrice: `${bbPackage.originalPriceAED || 750} AED`,
+        dealPrice: `${bbPackage.priceAED || 500} AED`,
+        savedAmount: `${Math.max(0, (bbPackage.originalPriceAED || 750) - (bbPackage.priceAED || 500))} AED`,
         promoCode: 'HOOPS250',
         studentName: fullName,
         email,
@@ -505,10 +518,10 @@ export default function BasketballCheckoutPage({ navigateTo }) {
                     color: '#ffffff',
                     marginBottom: '6px'
                   }}>
-                    2 Months Basketball Coaching Package (16 Classes)
+                    {bbPackage.title || '2 Months Basketball Coaching Package'} ({bbPackage.classesCount || 16} Classes)
                   </h2>
                   <p style={{ fontSize: '13px', color: '#bfdbfe', margin: 0, lineHeight: 1.5 }}>
-                    16 Total Classes • 2x Weekly FIBA Training • Al Nahyan Arena • Free Official Jersey
+                    {bbPackage.classesCount || 16} Total Classes • 2x Weekly FIBA Training • Al Nahyan Arena • Free Official Jersey
                   </p>
                 </div>
 
@@ -521,7 +534,7 @@ export default function BasketballCheckoutPage({ navigateTo }) {
                   border: '1px solid rgba(56, 189, 248, 0.3)'
                 }}>
                   <div style={{ fontSize: '12px', color: '#94a3b8', textDecoration: 'line-through', fontWeight: 700 }}>
-                    Regular: AED 750
+                    Regular: AED {bbPackage.originalPriceAED || (Number(bbPackage.priceAED) + 250)}
                   </div>
                   <div style={{
                     fontSize: '32px',
@@ -531,10 +544,10 @@ export default function BasketballCheckoutPage({ navigateTo }) {
                     lineHeight: 1,
                     marginTop: '2px'
                   }}>
-                    AED 500
+                    AED {bbPackage.priceAED}
                   </div>
                   <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 800, textTransform: 'uppercase' }}>
-                    All-Inclusive (Save AED 250)
+                    All-Inclusive (Save AED {Math.max(0, (bbPackage.originalPriceAED || (Number(bbPackage.priceAED) + 250)) - Number(bbPackage.priceAED))})
                   </span>
                 </div>
               </div>
@@ -624,7 +637,7 @@ export default function BasketballCheckoutPage({ navigateTo }) {
                 {/* Email Address */}
                 <div>
                   <label style={{ fontSize: '11px', fontWeight: 800, color: '#93c5fd', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
-                    Email Address (For Pass & Updates) *
+                    Gmail Address (@gmail.com only) *
                   </label>
                   <div style={{ position: 'relative' }}>
                     <Mail style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: '#64748b' }} />
@@ -633,7 +646,10 @@ export default function BasketballCheckoutPage({ navigateTo }) {
                       required
                       placeholder="e.g. parent.alex@gmail.com"
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        if (emailError) setEmailError('');
+                      }}
                       style={{
                         width: '100%',
                         padding: '12px 16px 12px 42px',
@@ -649,25 +665,56 @@ export default function BasketballCheckoutPage({ navigateTo }) {
                   {emailError && <span style={{ fontSize: '11px', color: '#f87171', marginTop: '4px', display: 'block' }}>{emailError}</span>}
                 </div>
 
-                {/* Phone Number */}
+                {/* Phone Number - 9 Digits Only */}
                 <div>
-                  <label style={{ fontSize: '11px', fontWeight: 800, color: '#93c5fd', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>
-                    Phone / WhatsApp Number *
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <Phone style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', color: '#64748b' }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '11px', fontWeight: 800, color: '#93c5fd', textTransform: 'uppercase', display: 'block' }}>
+                      Phone (9 Digits) *
+                    </label>
+                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                      {phone.length}/9
+                    </span>
+                  </div>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    borderRadius: '12px',
+                    backgroundColor: '#04091a',
+                    border: phoneError ? '1.5px solid #ef4444' : '1px solid rgba(59, 130, 246, 0.4)',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      padding: '12px 14px',
+                      background: 'rgba(59, 130, 246, 0.15)',
+                      borderRight: '1px solid rgba(59, 130, 246, 0.3)',
+                      color: '#60a5fa',
+                      fontWeight: 800,
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <Phone style={{ width: '15px', height: '15px', color: '#60a5fa' }} />
+                      <span>+971</span>
+                    </div>
                     <input
                       type="tel"
                       required
-                      placeholder="e.g. +971 50 123 4567"
+                      maxLength={9}
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      placeholder="50 123 4567"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => {
+                        const digits = format10DigitPhone(e.target.value);
+                        setPhone(digits);
+                        if (phoneError) setPhoneError('');
+                      }}
                       style={{
-                        width: '100%',
-                        padding: '12px 16px 12px 42px',
-                        borderRadius: '12px',
-                        backgroundColor: '#04091a',
-                        border: phoneError ? '1.5px solid #ef4444' : '1px solid rgba(59, 130, 246, 0.4)',
+                        flex: 1,
+                        padding: '12px 16px',
+                        backgroundColor: 'transparent',
+                        border: 'none',
                         color: '#ffffff',
                         fontSize: '13px',
                         outline: 'none'

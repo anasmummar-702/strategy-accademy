@@ -60,11 +60,11 @@ export default function ProductDetailPage({
     ? product.images 
     : [product.image || '/images/strategy_basketball_ball.jpg'];
 
-  const price = typeof product.price === 'number' ? product.price : parseFloat(product.price) || 0;
-  const oldPrice = typeof product.oldPrice === 'number' ? product.oldPrice : parseFloat(product.oldPrice) || 0;
+  const price = typeof product?.price === 'number' ? product.price : (parseFloat(product?.price) || (product?.priceFils ? product.priceFils / 100 : 0));
+  const oldPrice = typeof product?.oldPrice === 'number' ? product.oldPrice : (parseFloat(product?.oldPrice) || 0);
   const savings = oldPrice > price ? oldPrice - price : 0;
   const installment = (price / 4).toFixed(2);
-  const isWishlisted = wishlistItems.some(i => i.id === product.id);
+  const isWishlisted = wishlistItems.some(i => i.id === product?.id);
 
   // Related products from same sport or category
   const relatedProducts = productsData
@@ -126,7 +126,7 @@ export default function ProductDetailPage({
       />
 
       {/* Main Product Container */}
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 pb-10 sm:pb-16">
         
         {/* Navigation Breadcrumb & Back Button */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6 sm:mb-8 text-xs font-semibold text-slate-500">

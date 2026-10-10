@@ -37,6 +37,9 @@ export default function ProductCard({
     }
   };
 
+  const numPrice = typeof price === 'number' ? price : (parseFloat(price) || (product.priceFils ? product.priceFils / 100 : 0));
+  const numOldPrice = oldPrice ? (typeof oldPrice === 'number' ? oldPrice : (parseFloat(oldPrice) || 0)) : null;
+
   return (
     <div 
       onClick={handleCardClick}
@@ -121,13 +124,13 @@ export default function ProductCard({
         <div className="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-              ${price.toFixed(2)}
+              ${numPrice.toFixed(2)}
             </span>
-            {oldPrice && (
+            {numOldPrice && numOldPrice > 0 ? (
               <span className="text-xs text-slate-400 line-through font-medium">
-                ${oldPrice.toFixed(2)}
+                ${numOldPrice.toFixed(2)}
               </span>
-            )}
+            ) : null}
           </div>
 
           <button

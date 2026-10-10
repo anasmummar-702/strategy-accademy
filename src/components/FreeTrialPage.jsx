@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
+  ArrowRight,
   Calendar as CalendarIcon, 
   Clock, 
   User, 
@@ -29,6 +30,8 @@ import {
   Bot
 } from 'lucide-react';
 import SkateTrialChatbot from './SkateTrialChatbot';
+import { publicApi } from '../services/api';
+import { format10DigitPhone, validate10DigitPhone, validateGmail } from '../utils/validation';
 
 export default function FreeTrialPage({ navigateTo }) {
   const [vipPerk, setVipPerk] = useState(false);
@@ -252,6 +255,7 @@ export default function FreeTrialPage({ navigateTo }) {
     setIsAnswering(false);
     setSelectedAnswer(null);
     setBookingStep(0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleAnswerQuestion1 = (answer) => {
@@ -294,19 +298,18 @@ export default function FreeTrialPage({ navigateTo }) {
   const handleNextToCandidate = (e) => {
     if (e) e.preventDefault();
     
-    // Strict @gmail.com validation
-    const trimmedEmail = clientEmail.trim();
-    const isGmail = /^[a-zA-Z0-9._%+-]+@gmail\.com$/i.test(trimmedEmail);
-    if (!isGmail) {
-      setEmailError('Please enter a valid Gmail address ending in @gmail.com');
+    // Strictly require @gmail.com email
+    const emailVal = validateGmail(clientEmail);
+    if (!emailVal.isValid) {
+      setEmailError(emailVal.error);
       return;
     }
     setEmailError('');
 
-    // Strict 10 digits validation
-    const digitsOnly = clientPhone.replace(/\D/g, '');
-    if (digitsOnly.length !== 10) {
-      setPhoneError('Please enter exactly 10 digits for your contact number (e.g. 5012345678)');
+    // Strictly require 9 digits UAE phone number
+    const phoneVal = validate10DigitPhone(clientPhone);
+    if (!phoneVal.isValid) {
+      setPhoneError(phoneVal.error);
       return;
     }
     setPhoneError('');
@@ -334,7 +337,7 @@ export default function FreeTrialPage({ navigateTo }) {
 
     setIsProcessing(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const nameToUse = candidateName.trim() || 'Registered Skater';
       const emailToUse = clientEmail.trim() || 'skater@gmail.com';
       let phoneToUse = clientPhone.trim();
@@ -348,6 +351,19 @@ export default function FreeTrialPage({ navigateTo }) {
       const activeLoc = LOCATION_CONFIGS[selectedLocation] || LOCATION_CONFIGS['Al Nahyan'];
       const dateObj = new Date(2026, currentMonthIndex === 0 ? 9 : 10, selectedDay);
       const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+
+      try {
+        await publicApi.submitEnquiry({
+          participantName: nameToUse,
+          customerEmail: emailToUse,
+          customerPhone: phoneToUse,
+          programTitle: 'Inline & Quad Skating Trial Academy',
+          preferredDay: dayName,
+          preferredTime: selectedTimeSlot,
+        });
+      } catch (err) {
+        console.warn('Backend enquiry submission fallback:', err.message);
+      }
 
       const pass = {
         id: ticketId,
@@ -387,20 +403,32 @@ export default function FreeTrialPage({ navigateTo }) {
       {/* Clean Top Navigation Bar */}
       <div className="trial-app-bar">
         <div className="trial-app-bar-inner">
-          <button
-            onClick={() => {
-              if (isSubmitted) {
-                setIsSubmitted(false);
-              } else {
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (isSubmitted) {
+                  setIsSubmitted(false);
+                  setTicketData(null);
+                }
                 navigateTo('trial');
-              }
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 text-blue-600" />
-            <span>{isSubmitted ? 'Book Another' : 'Back to Selection'}</span>
-          </button>
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 text-blue-600" />
+              <span>Back to Selection</span>
+            </button>
+
+            <button
+              onClick={() => {
+                navigateTo('home');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+            >
+              <span>Home</span>
+            </button>
+          </div>
 
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
@@ -513,13 +541,23 @@ export default function FreeTrialPage({ navigateTo }) {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-2.5">
               <button
                 onClick={() => window.print()}
-                className="flex-1 py-3.5 px-4 rounded-xl bg-white hover:bg-gray-50 border border-gray-300 font-bold text-xs text-gray-800 flex items-center justify-center gap-2 shadow-sm"
+                className="flex-1 py-3.5 px-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-300 font-bold text-xs text-gray-800 flex items-center justify-center gap-1.5 shadow-sm"
               >
                 <Printer className="w-4 h-4 text-gray-600" />
-                <span>Print or Save Pass PDF</span>
+                <span>Print Pass</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  navigateTo('home');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="flex-1 py-3.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 font-bold text-xs text-white flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <span>Return to Home</span>
               </button>
 
               <button
@@ -527,9 +565,9 @@ export default function FreeTrialPage({ navigateTo }) {
                   navigateTo('programs');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="flex-1 trial-btn-primary"
+                className="flex-1 trial-btn-primary py-3.5 px-3 text-xs"
               >
-                <span>Explore Full Academy Courses</span>
+                <span>Explore Courses</span>
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -829,66 +867,6 @@ export default function FreeTrialPage({ navigateTo }) {
               </button>
             </div>
 
-            {/* TWO-STEP VISUAL PROGRESS STEPPER & UPCOMING QUESTION INDICATOR */}
-            {bookingStep === 0 && (
-              <div className="mb-4 bg-slate-50/90 p-3 rounded-2xl border border-slate-200/80 shadow-xs">
-                <div className="flex items-center justify-between text-[11px] font-bold mb-2">
-                  <div className={`flex items-center gap-1.5 transition-colors ${
-                    preCheckStep === 1 ? 'text-blue-600 font-extrabold' : 'text-emerald-600'
-                  }`}>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${
-                      preCheckStep > 1 
-                        ? 'bg-emerald-500 text-white shadow-xs' 
-                        : 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-200'
-                    }`}>
-                      {preCheckStep > 1 ? '✓' : '1'}
-                    </span>
-                    <span>Question 1: Experience</span>
-                  </div>
-
-                  <div className="flex items-center text-slate-300">
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </div>
-
-                  <div className={`flex items-center gap-1.5 transition-colors ${
-                    preCheckStep === 2 ? 'text-blue-600 font-extrabold' : 'text-slate-400'
-                  }`}>
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black transition-all ${
-                      preCheckStep === 2 
-                        ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-200' 
-                        : 'bg-slate-200 text-slate-500'
-                    }`}>
-                      2
-                    </span>
-                    <span>Question 2: Skates</span>
-                  </div>
-                </div>
-
-                {/* Animated Visual Progress Bar Track */}
-                <div className="w-full bg-slate-200/80 h-2 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-500 ease-out"
-                    style={{ 
-                      width: isAnswering && preCheckStep === 1 
-                        ? '85%' 
-                        : preCheckStep === 1 
-                        ? '50%' 
-                        : '100%' 
-                    }}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between mt-1.5 text-[10px] text-slate-500 font-medium">
-                  <span>
-                    {preCheckStep === 1 ? 'Step 1 of 2 in progress' : '✓ Question 1 completed'}
-                  </span>
-                  <span className="text-blue-600 font-bold">
-                    {preCheckStep === 1 ? '👉 Next coming: Skates & Equipment' : 'Final Question before Schedule'}
-                  </span>
-                </div>
-              </div>
-            )}
-
             {/* STEP 0: ONE QUESTION AT A TIME (CLICK YES/NO TO AUTO-ADVANCE) */}
             {bookingStep === 0 && (
               <div className="py-1">
@@ -978,29 +956,29 @@ export default function FreeTrialPage({ navigateTo }) {
                         <span>Saving answer... Loading Question 2 (Skates & Equipment)</span>
                       </div>
                     ) : (
-                      <div className="mt-6 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-blue-50/80 border border-blue-200/80 text-[11px] font-medium text-slate-700 shadow-2xs">
-                        <span className="font-bold text-blue-600">Up next:</span>
+                      <div className="mt-6 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50/80 border border-amber-200/80 text-[11px] font-medium text-amber-900 shadow-2xs">
+                        <span className="font-bold text-amber-600">Up next:</span>
                         <span>Question 2 will ask if your child has skates</span>
-                        <ChevronRight className="w-3.5 h-3.5 text-blue-600" />
+                        <ChevronRight className="w-3.5 h-3.5 text-amber-600" />
                       </div>
                     )}
                   </div>
                 ) : (
-                  /* QUESTION 2: Does your child have skates? */
+                  /* QUESTION 2: Does your child have skates? (YELLOW THEME) */
                   <div 
                     key="question-2"
                     className={`text-center py-2 sm:py-3 ${questionSlideDir === 'left' ? 'question-slide-in-left' : 'question-slide-in-right'}`}
                   >
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3 border border-blue-100 shadow-xs">
-                      <ShieldCheck className="w-6 h-6 text-blue-600" />
+                    <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-3 border border-amber-300 shadow-xs">
+                      <ShieldCheck className="w-6 h-6 text-amber-600" />
                     </div>
 
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-bold text-emerald-700 mb-2">
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 border border-amber-300 text-[11px] font-bold text-amber-900 mb-2">
+                      <Check className="w-3.5 h-3.5 text-amber-700" />
                       <span>Question 2 of 2 • Final Pre-Check</span>
                     </div>
 
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-['Outfit'] leading-snug max-w-sm mx-auto mb-2">
+                    <h2 className="text-xl sm:text-2xl font-black text-amber-500 font-['Outfit'] leading-snug max-w-sm mx-auto mb-2">
                       Does your child have their own skates?
                     </h2>
 
@@ -1016,22 +994,22 @@ export default function FreeTrialPage({ navigateTo }) {
                         onClick={() => handleAnswerQuestion2('yes')}
                         className={`group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer ${
                           selectedAnswer === 'yes'
-                            ? 'bg-blue-50 border-2 border-blue-600 shadow-md ring-2 ring-blue-400/40 scale-[1.02]'
-                            : 'bg-white border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 hover:shadow-lg active:scale-95'
+                            ? 'bg-amber-50 border-2 border-amber-500 shadow-md ring-2 ring-amber-400/40 scale-[1.02]'
+                            : 'bg-white border-2 border-slate-200 hover:border-amber-500 hover:bg-amber-50/50 hover:shadow-lg active:scale-95'
                         }`}
                       >
                         {selectedAnswer === 'yes' && (
-                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs animate-scaleIn">
+                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs animate-scaleIn">
                             <Check className="w-3 h-3" />
                           </div>
                         )}
                         <span className={`text-2xl font-black font-['Outfit'] transition-colors ${
-                          selectedAnswer === 'yes' ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-600'
+                          selectedAnswer === 'yes' ? 'text-amber-600' : 'text-slate-900 group-hover:text-amber-600'
                         }`}>
                           Yes
                         </span>
                         <span className={`text-[11px] font-semibold mt-1 transition-colors ${
-                          selectedAnswer === 'yes' ? 'text-blue-600' : 'text-slate-400 group-hover:text-blue-600'
+                          selectedAnswer === 'yes' ? 'text-amber-600' : 'text-slate-400 group-hover:text-amber-600'
                         }`}>
                           Will bring own skates
                         </span>
@@ -1043,22 +1021,22 @@ export default function FreeTrialPage({ navigateTo }) {
                         onClick={() => handleAnswerQuestion2('no')}
                         className={`group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer ${
                           selectedAnswer === 'no'
-                            ? 'bg-blue-50 border-2 border-blue-600 shadow-md ring-2 ring-blue-400/40 scale-[1.02]'
-                            : 'bg-white border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 hover:shadow-lg active:scale-95'
+                            ? 'bg-amber-50 border-2 border-amber-500 shadow-md ring-2 ring-amber-400/40 scale-[1.02]'
+                            : 'bg-white border-2 border-slate-200 hover:border-amber-500 hover:bg-amber-50/50 hover:shadow-lg active:scale-95'
                         }`}
                       >
                         {selectedAnswer === 'no' && (
-                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs animate-scaleIn">
+                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs animate-scaleIn">
                             <Check className="w-3 h-3" />
                           </div>
                         )}
                         <span className={`text-2xl font-black font-['Outfit'] transition-colors ${
-                          selectedAnswer === 'no' ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-600'
+                          selectedAnswer === 'no' ? 'text-amber-600' : 'text-slate-900 group-hover:text-amber-600'
                         }`}>
                           No
                         </span>
                         <span className={`text-[11px] font-semibold mt-1 transition-colors ${
-                          selectedAnswer === 'no' ? 'text-blue-600' : 'text-slate-400 group-hover:text-blue-600'
+                          selectedAnswer === 'no' ? 'text-amber-600' : 'text-slate-400 group-hover:text-amber-600'
                         }`}>
                           Need rental skates
                         </span>
@@ -1066,8 +1044,8 @@ export default function FreeTrialPage({ navigateTo }) {
                     </div>
 
                     {isAnswering && selectedAnswer ? (
-                      <div className="mt-6 flex items-center justify-center gap-2 text-xs font-bold text-blue-600 animate-pulse">
-                        <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
+                      <div className="mt-6 flex items-center justify-center gap-2 text-xs font-bold text-amber-600 animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
                         <span>Ready! Opening Session Schedule & Branch Selection...</span>
                       </div>
                     ) : (
@@ -1076,7 +1054,7 @@ export default function FreeTrialPage({ navigateTo }) {
                         <button
                           type="button"
                           onClick={handleBackToQuestion1}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-blue-600 transition-colors py-1.5 px-3.5 rounded-lg hover:bg-slate-100 cursor-pointer"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-amber-600 transition-colors py-1.5 px-3.5 rounded-lg hover:bg-amber-50 cursor-pointer"
                         >
                           <ChevronLeft className="w-4 h-4" />
                           <span>Back to Question 1</span>
@@ -1213,11 +1191,16 @@ export default function FreeTrialPage({ navigateTo }) {
                   )}
                 </div>
 
-                {/* Contact Details / Phone with Fixed +971 Prefix (10 Digits Only) */}
+                {/* Contact Details / Phone with Fixed +971 Prefix (9 Digits Only) */}
                 <div className="booking-input-group">
-                  <label className="booking-label">
-                    Contact Phone Number *
-                  </label>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="booking-label" style={{ marginBottom: 0 }}>
+                      UAE Mobile (9 Digits) *
+                    </label>
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      {clientPhone.length}/9
+                    </span>
+                  </div>
                   <div className="booking-phone-wrapper">
                     <div className="booking-phone-prefix">
                       <Phone className="w-3.5 h-3.5 text-blue-600 shrink-0" />
@@ -1226,13 +1209,13 @@ export default function FreeTrialPage({ navigateTo }) {
                     <input
                       type="tel"
                       required
-                      maxLength={10}
+                      maxLength={9}
                       inputMode="numeric"
+                      pattern="[0-9]*"
                       placeholder="50 123 4567"
                       value={clientPhone}
                       onChange={(e) => {
-                        // Allow only numbers and cap to 10 digits
-                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        const digits = format10DigitPhone(e.target.value);
                         setClientPhone(digits);
                         if (phoneError) setPhoneError('');
                       }}

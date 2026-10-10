@@ -16,6 +16,7 @@ import Footer from './Footer';
 import SearchOverlay from './SearchOverlay';
 import WishlistDrawer from './WishlistDrawer';
 import { productsData } from '../data/products';
+import { publicApi } from '../services/api';
 
 export default function StrategySportsHome({
   navigateTo,
@@ -25,11 +26,25 @@ export default function StrategySportsHome({
   totalCartCount = 0,
   onOpenCart
 }) {
-  const [products] = useState(productsData);
+  const [products, setProducts] = useState(productsData);
   const [wishlistItems, setWishlistItems] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+
+  // Fetch live published products from backend API
+  useEffect(() => {
+    publicApi
+      .getProducts()
+      .then((res) => {
+        if (res && res.products && res.products.length > 0) {
+          setProducts(res.products);
+        }
+      })
+      .catch((err) => {
+        console.warn('Using static productsData fallback:', err.message);
+      });
+  }, []);
 
   // Initialize wishlist & recently viewed from localStorage
   useEffect(() => {
@@ -185,7 +200,15 @@ export default function StrategySportsHome({
           onQuickView={handleProductView}
           onToggleWishlist={handleToggleWishlist}
           wishlistedIds={wishlistedIds}
-          onExploreSpecialEdition={() => scrollToSection('sec-featured-products')}
+          navigateTo={navigateTo}
+          onExploreSpecialEdition={() => {
+            if (navigateTo) {
+              navigateTo('special-edition');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else {
+              window.location.hash = 'special-edition';
+            }
+          }}
         />
       </div>
 
@@ -224,15 +247,15 @@ export default function StrategySportsHome({
       {/* 13. FOOTER */}
       <Footer
         onNavigate={(tab) => {
-          if (tab === 'about') {
+          if (tab === 'about' || tab === 'about-strategy' || tab === 'sec-about-strategy') {
             scrollToSection('sec-about-strategy');
             return;
           }
           if (navigateTo) {
             navigateTo(tab);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
           }
         }}
+        navigateTo={navigateTo}
       />
 
       {/* Interactive Search Overlay */}
