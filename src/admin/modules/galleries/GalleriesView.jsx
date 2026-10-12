@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Modal from '../../components/Modal';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import { compressImageFile } from '../../components/ImageUploader';
+import { adminApi } from '../../services/adminApi';
 import {
   getSkatingGallery,
   saveSkatingGallery,
@@ -18,7 +20,12 @@ import {
   ExternalLink,
   Sparkles,
   Layers,
-  ChevronRight
+  ChevronRight,
+  Upload,
+  Loader2,
+  X,
+  Check,
+  AlertCircle
 } from 'lucide-react';
 
 const SKATING_PRESETS = [
@@ -66,6 +73,13 @@ export default function GalleriesView({ initialSport = 'skating' }) {
     badge: ''
   });
 
+  // Upload States
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const fileInputRef = useRef(null);
+
   // Listen to external updates
   useEffect(() => {
     const handleSync = () => {
@@ -84,8 +98,51 @@ export default function GalleriesView({ initialSport = 'skating' }) {
     setTimeout(() => setToastMessage(''), 3500);
   };
 
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) {
+      setUploadError('Please select a valid image file (PNG, JPG, WEBP, etc.)');
+      return;
+    }
+    setUploadError('');
+    setIsUploading(true);
+    setUploadedFileName(file.name);
+
+    try {
+      // 1. Try server-side file upload if backend is active
+      const uploadRes = await adminApi.uploadFile(file);
+      if (uploadRes && uploadRes.url) {
+        setFormData((prev) => ({ ...prev, src: uploadRes.url }));
+        setIsUploading(false);
+        showToast('Image uploaded successfully to server!');
+        return;
+      }
+    } catch (err) {
+      console.warn('Backend file upload fallback to compressed image:', err.message);
+    }
+
+    try {
+      // 2. Client-side canvas compression fallback (zero-latency, offline safe, high quality)
+      const compressedDataUrl = await compressImageFile(file, 1600, 1000, 0.85);
+      if (compressedDataUrl) {
+        setFormData((prev) => ({ ...prev, src: compressedDataUrl }));
+        showToast('Image processed and loaded successfully!');
+      } else {
+        throw new Error('Unable to process the selected image file.');
+      }
+    } catch (err) {
+      setUploadError(err.message || 'Failed to process image file.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const handleOpenCreate = () => {
     setEditingItem(null);
+    setIsUploading(false);
+    setIsDragOver(false);
+    setUploadError('');
+    setUploadedFileName('');
     setFormData({
       src: presets[0] || '',
       title: '',
@@ -97,6 +154,10 @@ export default function GalleriesView({ initialSport = 'skating' }) {
 
   const handleOpenEdit = (item) => {
     setEditingItem(item);
+    setIsUploading(false);
+    setIsDragOver(false);
+    setUploadError('');
+    setUploadedFileName('');
     setFormData({
       src: item.src || '',
       title: item.title || '',
@@ -194,14 +255,14 @@ export default function GalleriesView({ initialSport = 'skating' }) {
           <div className="flex items-center gap-2">
             <h1 className="text-lg sm:text-xl font-bold text-zinc-900 tracking-tight flex items-center gap-2">
               <ImageIcon className="w-5 h-5 text-indigo-600" />
-              <span>Academy Galleries &amp; Media</span>
+              <span>Academy Galleries</span>
             </h1>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-              Interactive Lightboxes
+              Live Storefront Sync
             </span>
           </div>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Manage the interactive photo galleries on the public Skating and Basketball Academy pages.
+            Manage photos for the Skating Academy ("Experience the Rink in Action") and Basketball Academy ("Photo &amp; Training Gallery") sections.
           </p>
         </div>
 
@@ -215,7 +276,7 @@ export default function GalleriesView({ initialSport = 'skating' }) {
                 : 'text-zinc-600 hover:text-zinc-900'
             }`}
           >
-            <span>⛸️ Skating Academy</span>
+            <span>⛸️ Skating Page Gallery</span>
             <span className="text-[10px] font-mono px-1.5 py-0.2 bg-zinc-100 rounded text-zinc-600">
               {skatingItems.length}
             </span>
@@ -228,7 +289,7 @@ export default function GalleriesView({ initialSport = 'skating' }) {
                 : 'text-zinc-600 hover:text-zinc-900'
             }`}
           >
-            <span>🏀 Basketball Academy</span>
+            <span>🏀 Basketball Page Gallery</span>
             <span className="text-[10px] font-mono px-1.5 py-0.2 bg-zinc-100 rounded text-zinc-600">
               {basketballItems.length}
             </span>
@@ -239,9 +300,9 @@ export default function GalleriesView({ initialSport = 'skating' }) {
       {/* Control Bar: Actions & Summary */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-zinc-50 border border-zinc-200/80 p-3.5 rounded-xl">
         <div className="text-xs text-zinc-600">
-          Viewing <strong>{currentItems.length} photos</strong> for{' '}
+          Managing <strong>{currentItems.length} photos</strong> for{' '}
           <strong className="text-zinc-900">
-            {activeSport === 'skating' ? 'Skating Academy (About Section)' : 'Basketball Academy (Al Nahyan Court)'}
+            {activeSport === 'skating' ? 'Skating Academy ("Experience the Rink in Action")' : 'Basketball Academy ("Photo & Training Gallery")'}
           </strong>.
         </div>
         <div className="flex items-center gap-2">
@@ -339,12 +400,36 @@ export default function GalleriesView({ initialSport = 'skating' }) {
         size="lg"
       >
         <form onSubmit={handleSave} className="space-y-4">
-          {/* Live Preview Box */}
+          {/* Live Preview Box with Drag & Drop Upload */}
           <div>
-            <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-1.5">
-              Photo Preview
-            </label>
-            <div className="relative aspect-[16/9] max-h-48 rounded-xl overflow-hidden bg-zinc-900 border border-zinc-200 flex items-center justify-center">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider">
+                Photo Preview
+              </label>
+              <span className="text-[10px] text-zinc-500">
+                Drag &amp; drop an image or use the upload button below
+              </span>
+            </div>
+
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragOver(false);
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                  handleFileUpload(e.dataTransfer.files[0]);
+                }
+              }}
+              className={`relative aspect-[16/9] max-h-48 rounded-xl overflow-hidden bg-zinc-900 border transition-all flex items-center justify-center group ${
+                isDragOver
+                  ? 'border-indigo-500 ring-4 ring-indigo-500/20 scale-[1.01]'
+                  : 'border-zinc-200'
+              }`}
+            >
               {formData.src ? (
                 <img
                   src={formData.src}
@@ -355,15 +440,131 @@ export default function GalleriesView({ initialSport = 'skating' }) {
                   }}
                 />
               ) : (
-                <div className="text-zinc-500 text-xs flex items-center gap-1.5">
-                  <ImageIcon className="w-4 h-4" />
-                  <span>No image selected</span>
+                <div className="text-zinc-500 text-xs flex flex-col items-center gap-1.5 p-4 text-center">
+                  <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-400">
+                    <ImageIcon className="w-5 h-5" />
+                  </div>
+                  <span>No image selected yet</span>
                 </div>
               )}
-              <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-md bg-black/70 text-white text-[10px] font-bold">
+
+              {/* Drag & Drop Overlay */}
+              {isDragOver && (
+                <div className="absolute inset-0 bg-indigo-950/85 backdrop-blur-xs flex flex-col items-center justify-center text-white z-20 pointer-events-none">
+                  <Upload className="w-8 h-8 animate-bounce mb-1 text-indigo-400" />
+                  <p className="text-xs font-bold">Drop photo here to upload</p>
+                </div>
+              )}
+
+              {/* Uploading Spinner Overlay */}
+              {isUploading && (
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-xs flex flex-col items-center justify-center text-white z-20">
+                  <Loader2 className="w-7 h-7 text-indigo-400 animate-spin mb-1.5" />
+                  <p className="text-xs font-semibold">Processing &amp; optimizing picture...</p>
+                </div>
+              )}
+
+              {/* Hover Overlay Controls */}
+              {!isUploading && !isDragOver && (
+                <div className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 z-10 p-3">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-3 py-1.5 bg-white text-zinc-900 hover:bg-zinc-100 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-md cursor-pointer transition"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Upload New Photo</span>
+                  </button>
+                  {formData.src && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData((prev) => ({ ...prev, src: '' }));
+                        setUploadedFileName('');
+                      }}
+                      className="px-2.5 py-1.5 bg-rose-600/90 hover:bg-rose-600 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-md cursor-pointer transition"
+                      title="Clear photo"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      <span>Clear</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Badge Overlay */}
+              <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-md bg-black/75 backdrop-blur-xs text-white text-[10px] font-bold border border-white/10 z-10 pointer-events-none">
                 {formData.badge || 'Academy Tag'}
               </div>
             </div>
+          </div>
+
+          {/* Direct File Upload Option Box */}
+          <div className="p-3 bg-gradient-to-r from-indigo-50/90 via-blue-50/50 to-zinc-50 border border-indigo-200/90 rounded-xl space-y-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-zinc-900">
+                  <Upload className="w-4 h-4 text-indigo-600" />
+                  <span>Upload Photo From Computer / Device</span>
+                </div>
+                <p className="text-[11px] text-zinc-500 mt-0.5">
+                  Select any photo from your PC/phone or drag &amp; drop onto preview
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      handleFileUpload(e.target.files[0]);
+                    }
+                    e.target.value = '';
+                  }}
+                  className="hidden"
+                />
+
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-xs font-bold rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Choose Picture From PC</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Uploaded Feedback Badge */}
+            {uploadedFileName && !uploadError && (
+              <div className="flex items-center justify-between text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-md">
+                <div className="flex items-center gap-1.5 truncate">
+                  <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span className="truncate">Loaded: {uploadedFileName}</span>
+                </div>
+                <span className="text-[10px] text-emerald-600 font-bold shrink-0 uppercase tracking-wider">Ready to Save</span>
+              </div>
+            )}
+
+            {/* Upload Error Alert */}
+            {uploadError && (
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-md">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                <span>{uploadError}</span>
+              </div>
+            )}
           </div>
 
           {/* Quick Preset Selector */}
@@ -376,7 +577,10 @@ export default function GalleriesView({ initialSport = 'skating' }) {
                 <button
                   type="button"
                   key={pIdx}
-                  onClick={() => setFormData({ ...formData, src: presetPath })}
+                  onClick={() => {
+                    setUploadedFileName('');
+                    setFormData({ ...formData, src: presetPath });
+                  }}
                   className={`relative rounded-lg overflow-hidden aspect-square border-2 transition cursor-pointer ${
                     formData.src === presetPath
                       ? 'border-indigo-600 ring-2 ring-indigo-600/30 scale-95'
@@ -392,17 +596,41 @@ export default function GalleriesView({ initialSport = 'skating' }) {
 
           {/* Image URL path */}
           <div>
-            <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider mb-1">
-              Image URL / Path *
-            </label>
-            <input
-              type="text"
-              required
-              value={formData.src}
-              onChange={(e) => setFormData({ ...formData, src: e.target.value })}
-              placeholder="/images/skating_angels/gallery_1.jpg or external HTTPS url"
-              className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold text-zinc-700 uppercase tracking-wider">
+                Image URL / Path *
+              </label>
+              {formData.src?.startsWith('data:') && (
+                <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                  Custom Uploaded File
+                </span>
+              )}
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                required
+                value={formData.src?.startsWith('data:') ? 'Custom Uploaded Picture (Ready to Save)' : formData.src}
+                onChange={(e) => {
+                  setUploadedFileName('');
+                  setFormData({ ...formData, src: e.target.value });
+                }}
+                placeholder="/images/skating_angels/gallery_1.jpg or external HTTPS url"
+                className="w-full px-3 py-2 text-xs border border-zinc-300 rounded-lg bg-white text-zinc-900 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono"
+              />
+              {formData.src?.startsWith('data:') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFormData((prev) => ({ ...prev, src: '' }));
+                    setUploadedFileName('');
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-zinc-500 hover:text-rose-600 px-2 py-1 rounded bg-zinc-100 hover:bg-rose-50 border border-zinc-200 cursor-pointer"
+                >
+                  Clear / Paste URL
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Badge Tag */}

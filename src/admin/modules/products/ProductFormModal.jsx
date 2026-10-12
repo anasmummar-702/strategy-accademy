@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../../components/Modal';
-import ImageUploader from '../../components/ImageUploader';
+import MultiImageUploader from '../../components/MultiImageUploader';
+
 import {
   TextInput,
   SelectInput,
@@ -152,14 +153,26 @@ export default function ProductFormModal({
       if (isEditing) {
         await adminApi.uploadFile; // ensure API connected
         // Call backend API or local state
-        const token = localStorage.getItem('strategy_admin_token');
+        const vatFils = Math.round((formData.priceFils || 0) * 0.05);
+        const vatAed = parseFloat((vatFils / 100).toFixed(2));
+        const payload = {
+          ...formData,
+          price: (formData.priceFils || 0) / 100,
+          vatRate: 5,
+          vatFils,
+          vatAmountAed: vatAed,
+          priceWithVatAed: parseFloat((((formData.priceFils || 0) * 1.05) / 100).toFixed(2)),
+          trnNumber: '100293847500003',
+          isTaxable: true,
+        };
+
         const response = await fetch(`http://localhost:5000/api/v1/admin/products/${product.id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
         const result = await response.json();
         if (!response.ok || !result.success) {
@@ -167,14 +180,26 @@ export default function ProductFormModal({
         }
         onSaveSuccess(result.data);
       } else {
-        const token = localStorage.getItem('strategy_admin_token');
+        const vatFils = Math.round((formData.priceFils || 0) * 0.05);
+        const vatAed = parseFloat((vatFils / 100).toFixed(2));
+        const payload = {
+          ...formData,
+          price: (formData.priceFils || 0) / 100,
+          vatRate: 5,
+          vatFils,
+          vatAmountAed: vatAed,
+          priceWithVatAed: parseFloat((((formData.priceFils || 0) * 1.05) / 100).toFixed(2)),
+          trnNumber: '100293847500003',
+          isTaxable: true,
+        };
+
         const response = await fetch(`http://localhost:5000/api/v1/admin/products`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         });
         const result = await response.json();
         if (!response.ok || !result.success) {
@@ -311,6 +336,46 @@ export default function ProductFormModal({
               onChangeFils={(fils) => setFormData((prev) => ({ ...prev, costPriceFils: fils }))}
             />
           </div>
+
+          {/* UAE 5% VAT Calculation Compliance Card */}
+          <div className="p-3.5 rounded-xl bg-gradient-to-r from-blue-50/80 via-slate-50 to-blue-50/60 border border-blue-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-600 text-white font-black flex items-center justify-center text-xs shadow-xs">
+                5%
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-900">UAE Federal Tax (5% VAT)</span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
+                    Tax Included
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 font-medium">
+                  Official TRN: <span className="font-mono text-slate-700 font-semibold">100293847500003</span> • Standard 5% VAT rate
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border border-blue-200 shadow-2xs">
+              <div className="text-right">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+                  VAT (5%):
+                </span>
+                <span className="text-xs font-black text-blue-700 font-mono">
+                  + Dhs. {(((formData.priceFils || 0) / 100) * 0.05).toFixed(2)} AED
+                </span>
+              </div>
+              <div className="h-6 w-px bg-slate-200" />
+              <div className="text-right">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+                  Total With VAT:
+                </span>
+                <span className="text-sm font-black text-slate-950 font-mono">
+                  Dhs. {(((formData.priceFils || 0) / 100) * 1.05).toFixed(2)} AED
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* 3. Inventory & Stock Control */}
@@ -346,10 +411,18 @@ export default function ProductFormModal({
             4. Product Media & Gallery
           </h4>
 
-          <ImageUploader
-            label="Primary Product Cover Photo"
-            value={formData.image}
-            onChange={(url) => setFormData((prev) => ({ ...prev, image: url, images: [url, ...prev.images.slice(1)] }))}
+          <MultiImageUploader
+            images={formData.images || []}
+            onChange={(newImages) =>
+              setFormData((prev) => ({
+                ...prev,
+                images: newImages,
+                image: newImages[0] || ''
+              }))
+            }
+            maxImages={6}
+            label="Product Photos (Up to 6 Images)"
+            hint="Upload or paste up to 6 high-resolution product photos. Photo #1 is the catalog cover."
           />
         </div>
 

@@ -294,26 +294,34 @@ export default function ProductDetailPage({
                 {product.name}
               </h1>
 
-              {/* Price Row */}
-              <div className="flex items-baseline gap-3 pt-1">
-                <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
-                  ${price.toFixed(2)}
-                </span>
-                {oldPrice > price && (
-                  <span className="text-base sm:text-lg text-slate-400 line-through font-medium">
-                    ${oldPrice.toFixed(2)}
+              {/* Price Row & UAE VAT Badge */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-baseline gap-3">
+                  <span className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                    Dhs. {price.toFixed(2)} AED
                   </span>
-                )}
-                {savings > 0 && (
-                  <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200">
-                    Save ${savings.toFixed(2)}
+                  {oldPrice > price && (
+                    <span className="text-base sm:text-lg text-slate-400 line-through font-medium">
+                      Dhs. {oldPrice.toFixed(2)}
+                    </span>
+                  )}
+                  {savings > 0 && (
+                    <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2.5 py-1 rounded-md border border-rose-200">
+                      Save Dhs. {savings.toFixed(2)} AED
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 text-[10px] font-bold">
+                    UAE 5% VAT (Dhs. {(price * 0.05).toFixed(2)} AED)
                   </span>
-                )}
+                  <span className="text-[11px] text-slate-400">TRN: 100293847500003</span>
+                </div>
               </div>
 
               {/* Installment Payment Notice */}
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 flex items-center justify-between">
-                <span>Or 4 interest-free payments of <strong>${installment}</strong></span>
+                <span>Or 4 interest-free payments of <strong>Dhs. {(price / 4).toFixed(2)} AED</strong></span>
                 <span className="font-extrabold text-[10px] uppercase text-blue-600 bg-blue-100/70 px-2 py-0.5 rounded">
                   Tabby / Tamara
                 </span>

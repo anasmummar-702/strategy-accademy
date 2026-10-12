@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   ArrowRight,
@@ -18,13 +18,24 @@ import {
   Footprints,
   AlertCircle
 } from 'lucide-react';
+import SkatingScratchModal from './SkatingScratchModal';
 import { format10DigitPhone, validate10DigitPhone } from '../utils/validation';
 import { getSkatingGallery } from '../utils/academyGalleriesData';
 import { getSkatingPackages } from '../utils/academyPackagesData';
 
 export default function AboutSection({ navigateTo, openTrialModal }) {
+  const [isScratchModalOpen, setIsScratchModalOpen] = useState(false);
+
   // Dynamic Packages State from Admin
   const [skatingPackages, setSkatingPackages] = useState(getSkatingPackages);
+
+  // Auto-prompt surprise scratch card popup whenever user enters into the skating academy page
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsScratchModalOpen(true);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const handlePackagesUpdate = () => {
@@ -1230,6 +1241,60 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
           </div>
         </div>
       )}
+
+      {/* Floating Bottom-Right Skating Scratch Card Launcher */}
+      <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 40 }}>
+        <button
+          onClick={() => setIsScratchModalOpen(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '64px',
+            height: '64px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)',
+            color: '#ffffff',
+            fontSize: '32px',
+            border: '3px solid #ccfbf1',
+            boxShadow: '0 10px 30px rgba(13, 148, 136, 0.5)',
+            cursor: 'pointer',
+            transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)'
+          }}
+          title="Save AED 200 Skating Pass"
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.15) rotate(15deg)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1) rotate(0deg)'}
+        >
+          🛼
+          <span style={{
+            position: 'absolute',
+            top: '2px',
+            right: '2px',
+            width: '14px',
+            height: '14px',
+            backgroundColor: '#ef4444',
+            borderRadius: '50%',
+            border: '2px solid #ccfbf1'
+          }} />
+        </button>
+      </div>
+
+      {/* Skating Academy Scratch Card Modal */}
+      <SkatingScratchModal
+        isOpen={isScratchModalOpen}
+        onClose={() => setIsScratchModalOpen(false)}
+        onRegister={() => {
+          setIsScratchModalOpen(false);
+          if (navigateTo) {
+            navigateTo('trial-skating');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          } else if (openTrialModal) {
+            openTrialModal();
+          } else {
+            setIsAppointmentModalOpen(true);
+          }
+        }}
+      />
 
     </div>
   );

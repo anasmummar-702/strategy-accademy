@@ -10,7 +10,8 @@ import {
   Link as LinkIcon,
   Loader2,
   Sparkles,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react';
 import { adminApi } from '../services/adminApi';
 

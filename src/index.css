@@ -3750,6 +3750,19 @@ select.admin-input-control:focus {
   display: none !important;
 }
 
+.skate-scratch-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 390px;
+  margin: auto;
+  border-radius: 28px;
+  background: linear-gradient(160deg, #f0fdfa 0%, #ccfbf1 45%, #e0f2fe 100%);
+  border: 3px solid #ffffff !important;
+  box-shadow: 0 25px 60px -12px rgba(13, 148, 136, 0.35), 0 0 35px rgba(20, 184, 166, 0.2);
+  overflow: hidden;
+  color: #042f2e;
+}
+
 /* ==========================================================================
    KINETIC HAUTE ATELIER LUXURY DESIGN SYSTEM
    ========================================================================== */

@@ -156,8 +156,7 @@ export default function KineticCartPage({
   const totalUnits = items.reduce((sum, i) => sum + (i.quantity || 1), 0);
   const subtotal = items.reduce((sum, i) => sum + i.price * (i.quantity || 1), 0);
   const discountRate = isPromoApplied ? 0.10 : 0;
-  const discountAmount = subtotal * discountRate;
-  const taxRate = 0.08;
+  const taxRate = 0.05; // 5% UAE VAT
   const estimatedTax = (subtotal - discountAmount) * taxRate;
   const grandTotal = subtotal - discountAmount + estimatedTax;
 
@@ -659,9 +658,9 @@ export default function KineticCartPage({
                 )}
 
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Estimated Sales Tax (8%)</span>
-                  <span className="font-['Oswald',sans-serif] text-sm font-bold text-white">
-                    ${estimatedTax.toFixed(2)}
+                  <span className="text-slate-400">UAE Federal VAT (5%)</span>
+                  <span className="font-['Oswald',sans-serif] text-sm font-bold text-cyan-300">
+                    Dhs. {estimatedTax.toFixed(2)} AED
                   </span>
                 </div>
               </div>

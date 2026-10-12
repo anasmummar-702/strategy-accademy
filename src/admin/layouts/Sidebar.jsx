@@ -18,7 +18,8 @@ import {
   ChevronLeft,
   ExternalLink,
   HelpCircle,
-  Plus
+  Plus,
+  Contact
 } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { StrategyIcon } from '../../components/StrategyLogo';
@@ -92,10 +93,15 @@ export default function Sidebar({
       title: 'CONTENT & MARKETING',
       items: [
         { id: 'homepage', label: 'Homepage Builder', icon: Home },
-        { id: 'banners', label: 'Banners & Campaigns', icon: ImageIcon },
-        { id: 'galleries', label: 'Academy Galleries', icon: Layers, badge: '8' },
+        { id: 'galleries', label: 'Gallery', icon: ImageIcon },
         { id: 'navigation', label: 'Navbar & Footer', icon: Menu },
         { id: 'faqs', label: 'FAQs & Content', icon: HelpCircle },
+      ]
+    },
+    {
+      title: 'TRIAL LEADS & CRM',
+      items: [
+        { id: 'trial-leads', label: 'Trial Registrations', icon: Contact },
       ]
     },
     {

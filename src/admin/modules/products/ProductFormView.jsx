@@ -66,8 +66,8 @@ export default function ProductFormView({
     stockQuantity: 45,
     lowStockThreshold: 5,
     description: '',
-    image: '/images/strategy_basketball_ball.jpg',
-    images: ['/images/strategy_basketball_ball.jpg'],
+    image: '',
+    images: [],
     isFeatured: false,
     isBestSeller: false,
     isNewArrival: true,
@@ -107,8 +107,8 @@ export default function ProductFormView({
         stockQuantity: product.stockQuantity ?? product.stock ?? 45,
         lowStockThreshold: product.lowStockThreshold || 5,
         description: product.description || '',
-        image: product.image || (product.images && product.images[0]) || '/images/strategy_basketball_ball.jpg',
-        images: product.images?.length ? product.images : ['/images/strategy_basketball_ball.jpg'],
+        image: product.image || (product.images && product.images[0]) || '',
+        images: product.images?.length ? product.images : (product.image ? [product.image] : []),
         isFeatured: !!product.isFeatured,
         isBestSeller: !!product.isBestSeller,
         isNewArrival: !!product.isNewArrival,
@@ -261,10 +261,16 @@ export default function ProductFormView({
         image: primaryImage,
         images: productImages,
         id: product?.id || `prod_${Date.now()}`,
-        price: parseFloat(formData.priceAed),
-        priceFils: Math.round(parseFloat(formData.priceAed) * 100),
-        salePriceFils: Math.round(parseFloat(formData.salePriceAed) * 100),
-        costPriceFils: Math.round(parseFloat(formData.costPriceAed) * 100),
+        price: parseFloat(formData.priceAed) || 0,
+        priceFils: Math.round((parseFloat(formData.priceAed) || 0) * 100),
+        salePriceFils: Math.round((parseFloat(formData.salePriceAed) || 0) * 100),
+        costPriceFils: Math.round((parseFloat(formData.costPriceAed) || 0) * 100),
+        vatRate: 5,
+        vatAmountAed: parseFloat(((parseFloat(formData.priceAed) || 0) * 0.05).toFixed(2)),
+        vatAmountFils: Math.round((parseFloat(formData.priceAed) || 0) * 5),
+        priceWithVatAed: parseFloat(((parseFloat(formData.priceAed) || 0) * 1.05).toFixed(2)),
+        isTaxable: true,
+        trnNumber: '100293847500003',
         stockQuantity: parseInt(formData.stockQuantity) || 0,
         variants,
       };
@@ -520,6 +526,48 @@ export default function ProductFormView({
                   showBadge={true}
                   badgePosition="right"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* UAE Federal Tax (5% VAT) Compliance & Calculation Box */}
+          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-blue-50/80 via-slate-50 to-blue-50/60 border border-blue-200/90 shadow-2xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center text-xs shadow-xs">
+                  5%
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900">UAE Federal Tax (5% VAT)</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
+                      Tax Included
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                    Official Tax Registration: <span className="font-mono text-slate-700 font-semibold">TRN 100293847500003</span> • Standard 5% VAT rate
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 bg-white px-3.5 py-2 rounded-xl border border-blue-200 shadow-2xs self-start sm:self-auto">
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+                    VAT (5%):
+                  </span>
+                  <span className="text-xs font-black text-blue-700 font-mono">
+                    + Dhs. {((parseFloat(formData.priceAed) || 0) * 0.05).toFixed(2)} AED
+                  </span>
+                </div>
+                <div className="h-6 w-px bg-slate-200" />
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
+                    Total With VAT:
+                  </span>
+                  <span className="text-sm font-black text-slate-950 font-mono">
+                    Dhs. {((parseFloat(formData.priceAed) || 0) * 1.05).toFixed(2)} AED
+                  </span>
+                </div>
               </div>
             </div>
           </div>

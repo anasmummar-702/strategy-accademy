@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, CheckCircle2, ChevronRight, User, Mail, Phone, Calendar, AlertCircle } from 'lucide-react';
 import { format10DigitPhone, validate10DigitPhone, validateGmail } from '../utils/validation';
+import { saveTrialLead } from '../utils/trialLeadsData';
 
 export default function BasketballTrialModal({ isOpen, onClose }) {
   const [formData, setFormData] = useState({
@@ -34,6 +35,13 @@ export default function BasketballTrialModal({ isOpen, onClose }) {
     setPhoneError('');
 
     // Simulate submission
+    saveTrialLead('basketball', {
+      name: formData.name,
+      age: formData.age,
+      gender: formData.gender,
+      email: formData.email,
+      phone: formData.phone,
+    });
     setSubmitted(true);
     setTimeout(() => {
       setSubmitted(false);

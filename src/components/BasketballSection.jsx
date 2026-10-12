@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Trophy,
   Target,
@@ -90,31 +90,9 @@ export default function BasketballSection({ navigateTo, openTrialModal }) {
     return () => window.removeEventListener('strategy_packages_updated', handleUpdate);
   }, []);
 
-  // Basketball Gallery Carousel State
+  // Basketball Gallery State
   const [galleryImages, setGalleryImages] = useState(getBasketballGallery);
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  const [isAutoPlay, setIsAutoPlay] = useState(true);
   const [selectedImage, setSelectedImage] = useState(null);
-
-  // Auto-advance carousel
-  useEffect(() => {
-    if (!isAutoPlay || !galleryImages.length) return;
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % galleryImages.length);
-    }, 4500);
-    return () => clearInterval(timer);
-  }, [isAutoPlay, galleryImages.length]);
-
-  const handlePrevSlide = () => {
-    setIsAutoPlay(false);
-    setCurrentSlide((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
-  };
-
-  const handleNextSlide = () => {
-    setIsAutoPlay(false);
-    setCurrentSlide((prev) => (prev + 1) % galleryImages.length);
-  };
 
   // Sync when admin updates galleries
   useEffect(() => {
@@ -227,16 +205,12 @@ export default function BasketballSection({ navigateTo, openTrialModal }) {
     };
   }, []);
 
-  // Auto-prompt first-time visitor scratch card popup once per session
+  // Auto-prompt surprise scratch card popup whenever user enters into the basketball page
   useEffect(() => {
-    const hasSeenScratch = sessionStorage.getItem('strategy_seen_scratch_pass');
-    if (!hasSeenScratch) {
-      const timer = setTimeout(() => {
-        setIsScratchModalOpen(true);
-        sessionStorage.setItem('strategy_seen_scratch_pass', 'true');
-      }, 700);
-      return () => clearTimeout(timer);
-    }
+    const timer = setTimeout(() => {
+      setIsScratchModalOpen(true);
+    }, 600);
+    return () => clearTimeout(timer);
   }, []);
 
   const videoReels = [
@@ -1492,157 +1466,41 @@ export default function BasketballSection({ navigateTo, openTrialModal }) {
       </div>{/* end upper content sections container */}
 
       {/* =========================================================================
-          INTERACTIVE BASKETBALL ACADEMY PHOTO & TRAINING GALLERY WORKSPACE
+          PURE FULLSCREEN VERTICAL PHOTO GALLERY (NO TEXT, NO HEADINGS, NO BORDERS)
           ========================================================================= */}
-      <section id="basketball-gallery" className="relative z-10 py-12 sm:py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
-        <div className="relative rounded-[32px] p-6 sm:p-10 border border-cyan-500/30 shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-xl bg-gradient-to-b from-slate-900/90 via-slate-950/95 to-[#030718] overflow-hidden">
-          {/* Ambient cyan & blue court glow effects */}
-          <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-cyan-500/15 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -right-24 w-72 h-72 rounded-full bg-blue-600/15 blur-3xl pointer-events-none" />
-
-          {/* Header & Controls */}
-          <div className="relative z-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black uppercase tracking-widest text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-full">
-                  AL NAHYAN ARENA MOMENTS
-                </span>
-                <span className="text-[11px] font-bold text-slate-400">
-                  {galleryImages.length} High-Res Photos
-                </span>
-              </div>
-              <h3 className="font-['Unbounded',sans-serif] text-2xl sm:text-4xl font-black text-white mt-2.5 tracking-tight uppercase">
-                PHOTO &amp; TRAINING GALLERY
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-xl">
-                Explore our hardwood championship court, pro FIBA training sessions, and athlete development moments. Click any picture to view in full screen.
-              </p>
-            </div>
-
-            {/* Navigation Arrows */}
-            <div className="flex items-center gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={handlePrevSlide}
-                className="w-11 h-11 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 flex items-center justify-center text-white shadow-lg active:scale-95 transition-all cursor-pointer group"
-                aria-label="Previous Slide"
-              >
-                <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
-              </button>
-              <button
-                type="button"
-                onClick={handleNextSlide}
-                className="w-11 h-11 rounded-full bg-white/5 hover:bg-white/15 border border-white/10 flex items-center justify-center text-white shadow-lg active:scale-95 transition-all cursor-pointer group"
-                aria-label="Next Slide"
-              >
-                <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            </div>
-          </div>
-
-          {/* Active Carousel Dual Display (Featured Active Slide + Next Slide) */}
-          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Slide A (Active) */}
+      <section id="basketball-gallery" className="relative z-10 w-full flex flex-col">
+        {galleryImages.map((img, idx) => (
+          <ScrollReveal key={img.id || idx} delay={idx % 2 * 100} direction="up" className="w-full">
             <div 
-              onClick={() => setSelectedImage(galleryImages[currentSlide]?.src)}
-              className="relative rounded-2xl overflow-hidden shadow-2xl border border-cyan-400/40 aspect-[16/10] sm:aspect-[4/3] bg-slate-950 group cursor-pointer transition-all hover:border-cyan-300 ring-1 ring-cyan-500/20"
+              onClick={() => setSelectedImage(img.src)}
+              className="w-full h-[100dvh] min-h-[500px] relative overflow-hidden cursor-pointer group bg-slate-950"
             >
               <img 
-                src={galleryImages[currentSlide]?.src} 
-                alt={galleryImages[currentSlide]?.title} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                src={img.src} 
+                alt={`Basketball Academy moment ${idx + 1}`} 
+                className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
+                loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
-              
-              {/* Zoom hint icon in top right */}
-              <div className="absolute top-4 right-4 p-2 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 text-white opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all">
-                <Maximize2 className="w-4 h-4 text-cyan-400" />
-              </div>
-
-              <div className="absolute bottom-5 left-5 right-5 text-white">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-cyan-500 text-slate-950 px-3 py-1 rounded-full shadow-md inline-block">
-                  {galleryImages[currentSlide]?.badge || 'Strategy Basketball Academy'}
-                </span>
-                <h4 className="font-['Unbounded',sans-serif] text-lg sm:text-xl font-bold mt-2.5 text-white drop-shadow-md">
-                  {galleryImages[currentSlide]?.title}
-                </h4>
-                <p className="text-xs sm:text-sm text-slate-300 mt-1 line-clamp-2">
-                  {galleryImages[currentSlide]?.desc}
-                </p>
-              </div>
             </div>
-
-            {/* Slide B (Next Preview on Desktop) */}
-            <div 
-              onClick={() => setSelectedImage(galleryImages[(currentSlide + 1) % galleryImages.length]?.src)}
-              className="relative rounded-2xl overflow-hidden shadow-xl border border-white/10 aspect-[16/10] sm:aspect-[4/3] bg-slate-950 group cursor-pointer hidden md:block transition-all hover:border-cyan-400/50"
-            >
-              <img 
-                src={galleryImages[(currentSlide + 1) % galleryImages.length]?.src} 
-                alt={galleryImages[(currentSlide + 1) % galleryImages.length]?.title} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
-              
-              <div className="absolute top-4 right-4 p-2 rounded-xl bg-black/60 backdrop-blur-md border border-white/15 text-white opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all">
-                <Maximize2 className="w-4 h-4 text-cyan-400" />
-              </div>
-
-              <div className="absolute bottom-5 left-5 right-5 text-white">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-white/15 backdrop-blur-md text-cyan-300 border border-cyan-400/30 px-3 py-1 rounded-full shadow-md inline-block">
-                  {galleryImages[(currentSlide + 1) % galleryImages.length]?.badge || 'Strategy Basketball Academy'}
-                </span>
-                <h4 className="font-['Unbounded',sans-serif] text-lg sm:text-xl font-bold mt-2.5 text-white drop-shadow-md">
-                  {galleryImages[(currentSlide + 1) % galleryImages.length]?.title}
-                </h4>
-                <p className="text-xs sm:text-sm text-slate-300 mt-1 line-clamp-2">
-                  {galleryImages[(currentSlide + 1) % galleryImages.length]?.desc}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Thumbnails Row (Grid of 8) */}
-          <div className="relative z-10 grid grid-cols-4 sm:grid-cols-8 gap-2.5 sm:gap-3.5 mt-6">
-            {galleryImages.map((img, idx) => (
-              <button
-                key={img.id || idx}
-                type="button"
-                onClick={() => {
-                  setIsAutoPlay(false);
-                  setCurrentSlide(idx);
-                }}
-                className={`relative rounded-xl overflow-hidden aspect-square border-2 transition-all cursor-pointer group ${
-                  currentSlide === idx 
-                    ? 'border-cyan-400 ring-4 ring-cyan-400/30 scale-105 shadow-[0_0_15px_rgba(56,189,248,0.4)]' 
-                    : 'border-white/10 opacity-70 hover:opacity-100 hover:border-white/30'
-                }`}
-                title={img.title}
-              >
-                <img src={img.src} alt={img.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
-                <div className={`absolute inset-0 transition-opacity ${currentSlide === idx ? 'bg-cyan-500/10' : 'bg-black/20 group-hover:bg-transparent'}`} />
-              </button>
-            ))}
-          </div>
-
-        </div>
+          </ScrollReveal>
+        ))}
       </section>
 
       {/* Lightbox Modal for Full Image View */}
       {selectedImage && (
         <div 
           onClick={() => setSelectedImage(null)}
-          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-pointer animate-fadeIn"
+          className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md cursor-pointer animate-fadeIn"
         >
           <div 
             onClick={(e) => e.stopPropagation()} 
-            className="relative max-w-5xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl border border-white/20 bg-slate-950"
+            className="relative max-w-5xl max-h-[90vh] rounded-2xl overflow-hidden shadow-2xl bg-slate-950"
           >
             <img src={selectedImage} alt="Full resolution view" className="w-full h-full max-h-[85vh] object-contain block" />
             <button 
               type="button"
               onClick={() => setSelectedImage(null)}
-              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black border border-white/20 transition-all cursor-pointer hover:scale-105"
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/70 text-white flex items-center justify-center hover:bg-black transition-all cursor-pointer hover:scale-105"
               aria-label="Close Preview"
             >
               <X className="w-5 h-5 text-white" />

@@ -124,11 +124,11 @@ export default function ProductCard({
         <div className="pt-3 mt-2 border-t border-slate-100 flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-              ${numPrice.toFixed(2)}
+              Dhs. {numPrice.toFixed(2)} AED
             </span>
             {numOldPrice && numOldPrice > 0 ? (
               <span className="text-xs text-slate-400 line-through font-medium">
-                ${numOldPrice.toFixed(2)}
+                Dhs. {numOldPrice.toFixed(2)}
               </span>
             ) : null}
           </div>

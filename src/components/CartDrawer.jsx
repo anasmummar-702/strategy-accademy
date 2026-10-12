@@ -47,12 +47,15 @@ export default function CartDrawer({
   }, 0);
 
   const totalItemCount = cartItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
-  const freeShippingThreshold = 150;
+  const freeShippingThreshold = 300;
   const progressPercent = Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100));
   const amountToFreeShipping = Math.max(0, freeShippingThreshold - subtotal);
-  const shippingCost = subtotal >= freeShippingThreshold || subtotal === 0 ? 0 : 15;
+  const shippingCost = subtotal >= freeShippingThreshold || subtotal === 0 ? 0 : 20;
   const discountAmount = (subtotal * discount) / 100;
-  const total = Math.max(0, subtotal - discountAmount + (subtotal > 0 ? shippingCost : 0));
+  const taxableAmount = Math.max(0, subtotal - discountAmount);
+  const vatRate = 0.05; // 5% UAE Federal VAT
+  const vatAmount = taxableAmount * vatRate;
+  const total = taxableAmount + vatAmount + (subtotal > 0 ? shippingCost : 0);
 
   const applyPromo = (e) => {
     e.preventDefault();
@@ -130,9 +133,13 @@ export default function CartDrawer({
     setOrderComplete({
       orderId,
       items: [...cartItems],
+      subtotal,
+      vatRate: 5,
+      vatAmount,
       total,
       discountAmount,
       shippingCost,
+      trnNumber: '100293847500003',
       customerName: checkoutForm.name || 'Valued Athlete',
       shippingAddress: `${checkoutForm.address || 'Standard Delivery'}, ${checkoutForm.city || 'UAE'}`,
       paymentMethod: checkoutForm.paymentMethod
@@ -229,8 +236,8 @@ export default function CartDrawer({
               </p>
             </div>
 
-            {/* Receipt Summary Card */}
-            <div className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-2 text-xs">
+            {/* Receipt Summary Card with VAT & TRN */}
+            <div className="w-full p-4.5 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-2 text-xs">
               <div className="flex justify-between items-center pb-2 border-b border-slate-200">
                 <span className="text-slate-500 font-medium">Order Reference:</span>
                 <span className="font-black text-blue-600 tracking-wider">{orderComplete.orderId}</span>
@@ -240,12 +247,32 @@ export default function CartDrawer({
                 <span className="font-bold text-slate-800 truncate max-w-[200px]">{orderComplete.shippingAddress}</span>
               </div>
               <div className="flex justify-between items-center">
+                <span className="text-slate-500">Items Subtotal:</span>
+                <span className="font-semibold text-slate-900 font-mono">Dhs. {(orderComplete.subtotal ?? subtotal).toFixed(2)} AED</span>
+              </div>
+              <div className="flex justify-between items-center text-blue-700 font-semibold">
+                <span className="flex items-center gap-1.5">
+                  <span>UAE VAT (5%):</span>
+                  <span className="text-[10px] text-slate-400 font-normal">TRN: 100293847500003</span>
+                </span>
+                <span className="font-mono">+ Dhs. {(orderComplete.vatAmount ?? vatAmount).toFixed(2)} AED</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Courier Shipping:</span>
+                <span className="font-semibold text-slate-800 font-mono">
+                  {orderComplete.shippingCost === 0 ? <span className="text-emerald-600 font-bold">FREE</span> : `Dhs. ${(orderComplete.shippingCost ?? shippingCost).toFixed(2)} AED`}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
                 <span className="text-slate-500">Estimated Delivery:</span>
                 <span className="font-bold text-emerald-700">24 – 48 Hours (UAE Express)</span>
               </div>
-              <div className="flex justify-between items-center pt-2 border-t border-slate-200 font-black text-sm text-slate-900">
-                <span>Total Paid:</span>
-                <span className="text-blue-600">${orderComplete.total.toFixed(2)}</span>
+              <div className="flex justify-between items-center pt-2.5 border-t border-slate-200 font-black text-sm text-slate-900">
+                <div className="flex flex-col">
+                  <span>Total Paid:</span>
+                  <span className="text-[10px] font-normal text-slate-500">Includes 5% UAE VAT</span>
+                </div>
+                <span className="text-base text-blue-600 font-mono">Dhs. {orderComplete.total.toFixed(2)} AED</span>
               </div>
             </div>
 
@@ -261,13 +288,17 @@ export default function CartDrawer({
         ) : isCheckingOut ? (
           /* 2. CHECKOUT FORM VIEW */
           <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50/50">
-            <div className="p-4 rounded-2xl bg-blue-50/80 border border-blue-200 flex items-center justify-between">
+            {/* Amount Due Header Card with Live UAE VAT breakdown */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50/60 border border-blue-200 shadow-xs flex items-center justify-between">
               <div>
-                <span className="text-[11px] font-bold text-blue-900 uppercase tracking-wide">Amount Due</span>
-                <div className="text-xl font-black text-blue-600">${total.toFixed(2)}</div>
+                <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">Total Amount Due</span>
+                <div className="text-xl sm:text-2xl font-black text-blue-600 font-mono">Dhs. {total.toFixed(2)} AED</div>
+                <span className="text-[10px] text-slate-500 font-medium">Includes 5% UAE VAT</span>
               </div>
-              <div className="text-right text-[11px] text-slate-600">
-                <span>{totalItemCount} Items</span> • <span className="font-bold text-emerald-600">{shippingCost === 0 ? 'FREE Shipping' : '$15 Shipping'}</span>
+              <div className="text-right text-[11px] text-slate-600 space-y-0.5">
+                <div><span className="font-semibold text-slate-800">{totalItemCount} {totalItemCount === 1 ? 'Item' : 'Items'}</span></div>
+                <div className="text-blue-700 font-semibold font-mono">VAT (5%): + Dhs. {vatAmount.toFixed(2)} AED</div>
+                <div className="font-bold text-emerald-600">{shippingCost === 0 ? 'FREE Shipping' : 'Dhs. 20.00 Shipping'}</div>
               </div>
             </div>
 
@@ -453,13 +484,46 @@ export default function CartDrawer({
                 </div>
               )}
 
+              {/* Order Tax Breakdown & TRN Summary Box */}
+              <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-2 text-xs">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <span className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">Tax Invoice Breakdown</span>
+                  <span className="text-[10px] font-mono text-slate-500 font-semibold">TRN: 100293847500003</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Subtotal ({totalItemCount} {totalItemCount === 1 ? 'item' : 'items'}):</span>
+                  <span className="font-semibold text-slate-900 font-mono">Dhs. {subtotal.toFixed(2)} AED</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-emerald-600">
+                    <span>Promo Discount:</span>
+                    <span className="font-semibold font-mono">- Dhs. {discountAmount.toFixed(2)} AED</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-blue-700 font-semibold">
+                  <span className="flex items-center gap-1.5">
+                    <span>UAE Federal VAT (5%):</span>
+                    <span className="px-1.5 py-0.2 bg-blue-50 text-blue-700 border border-blue-200 text-[9px] font-black rounded uppercase">Standard 5%</span>
+                  </span>
+                  <span className="font-mono">+ Dhs. {vatAmount.toFixed(2)} AED</span>
+                </div>
+                <div className="flex justify-between text-slate-600">
+                  <span>Courier Shipping:</span>
+                  <span className="font-semibold text-slate-900 font-mono">{shippingCost === 0 ? <span className="text-emerald-600 font-bold">FREE</span> : `Dhs. ${shippingCost.toFixed(2)} AED`}</span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-slate-200 font-black text-sm text-slate-900">
+                  <span>Final Payable Amount:</span>
+                  <span className="text-blue-600 font-mono">Dhs. {total.toFixed(2)} AED</span>
+                </div>
+              </div>
+
               <div className="pt-2">
                 <button
                   type="submit"
                   className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
                   <Lock className="w-4 h-4" />
-                  <span>Authorize & Pay ${total.toFixed(2)}</span>
+                  <span>Authorize & Pay Dhs. {total.toFixed(2)} AED (Incl. 5% VAT)</span>
                 </button>
                 <div className="flex items-center justify-center gap-2 text-[11px] text-slate-500 font-medium mt-2">
                   <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
@@ -527,10 +591,13 @@ export default function CartDrawer({
                             {variantText}
                           </div>
 
-                          {/* Yellow Highlighted Price */}
-                          <div className="mb-2">
+                          {/* Yellow Highlighted Price & VAT note */}
+                          <div className="mb-2 flex items-center gap-2 flex-wrap">
                             <span className="bg-[#fde047] text-slate-950 font-extrabold px-1.5 py-0.5 rounded text-xs inline-block">
                               Dhs. {(itemPrice * itemQty).toFixed(2)} AED
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              (VAT 5%: +Dhs. {((itemPrice * itemQty) * 0.05).toFixed(2)} AED)
                             </span>
                           </div>
 
@@ -651,12 +718,52 @@ export default function CartDrawer({
 
             </div>
 
-            {/* Fixed Bottom Checkout Section */}
+            {/* Fixed Bottom Checkout Section with Live UAE VAT breakdown */}
             {cartItems.length > 0 && (
-              <div className="sticky bottom-0 bg-white border-t border-slate-100 p-4 sm:p-5 shadow-2xl z-20">
-                <p className="text-center text-xs text-slate-500 mb-2.5 font-medium">
-                  Shipping & taxes calculated at checkout
-                </p>
+              <div className="sticky bottom-0 bg-white border-t border-slate-200 p-4 sm:p-5 shadow-2xl z-20 space-y-3">
+                {/* Live Order Financial Summary with 5% VAT Breakdown */}
+                <div className="space-y-1.5 text-xs bg-slate-50/80 p-3.5 rounded-xl border border-slate-200/80">
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>Subtotal ({totalItemCount} {totalItemCount === 1 ? 'item' : 'items'}):</span>
+                    <span className="font-semibold text-slate-900 font-mono">Dhs. {subtotal.toFixed(2)} AED</span>
+                  </div>
+
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between items-center text-emerald-600">
+                      <span>Discount ({discount}%):</span>
+                      <span className="font-bold font-mono">- Dhs. {discountAmount.toFixed(2)} AED</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center text-blue-700 font-semibold">
+                    <span className="flex items-center gap-1.5">
+                      <span>UAE VAT (5%):</span>
+                      <span className="px-1.5 py-0.2 bg-blue-100 text-blue-800 text-[9px] font-black rounded uppercase">
+                        TRN: 100293847500003
+                      </span>
+                    </span>
+                    <span className="font-mono">+ Dhs. {vatAmount.toFixed(2)} AED</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>Shipping:</span>
+                    <span className="font-semibold font-mono">
+                      {shippingCost === 0 ? (
+                        <span className="text-emerald-600 font-bold">FREE</span>
+                      ) : (
+                        `Dhs. ${shippingCost.toFixed(2)} AED`
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200 flex justify-between items-baseline font-black text-sm text-slate-950">
+                    <div className="flex flex-col">
+                      <span>Total Amount:</span>
+                      <span className="text-[10px] font-medium text-slate-500">Includes 5% UAE VAT</span>
+                    </div>
+                    <span className="text-base text-blue-600 font-mono">Dhs. {total.toFixed(2)} AED</span>
+                  </div>
+                </div>
 
                 <button
                   onClick={() => setIsCheckingOut(true)}

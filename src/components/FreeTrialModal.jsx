@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Calendar, Clock, User, Mail, Phone, Footprints, Sparkles, CheckCircle, Ticket, Download, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { format10DigitPhone, validate10DigitPhone, validateGmail } from '../utils/validation';
+import { saveTrialLead } from '../utils/trialLeadsData';
 
 export default function FreeTrialModal({ isOpen, onClose }) {
   const [step, setStep] = useState(1);
@@ -41,6 +42,17 @@ export default function FreeTrialModal({ isOpen, onClose }) {
     setPhoneError('');
 
     const ticketId = 'SKT-' + Math.floor(100000 + Math.random() * 900000);
+    saveTrialLead('skating', {
+      name: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      programType: formData.programType,
+      experience: formData.experience,
+      timeSlot: formData.timeSlot,
+      skateSize: formData.skateSize,
+      needsEquipment: formData.needsEquipment,
+      ticketId,
+    });
     setBookingTicket({
       ...formData,
       ticketId,

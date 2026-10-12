@@ -401,7 +401,14 @@ export default function CategoriesView() {
       render: (val, row) => (
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-zinc-100 border border-zinc-200 overflow-hidden flex-shrink-0">
-            <img src={row.image} alt={val} className="w-full h-full object-cover" />
+            <img
+              src={row.image}
+              alt={val}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.src = '/images/strategy_basketball_ball.jpg';
+              }}
+            />
           </div>
           <div>
             <p
@@ -836,7 +843,9 @@ export default function CategoriesView() {
             </div>
 
             <ImageUploader
-              label="Banner Cover Photo URL"
+              label="Storefront Banner Cover Photo"
+              hint="Upload your custom picture (PNG, JPG, WEBP) from your computer or paste a URL"
+              aspectRatio="aspect-[21/9]"
               value={formData.image}
               onChange={(url) => setFormData((prev) => ({ ...prev, image: url }))}
             />
@@ -909,6 +918,9 @@ export default function CategoriesView() {
               src={bannerFormData.image}
               alt={bannerFormData.title}
               className="absolute inset-0 w-full h-full object-cover object-center"
+              onError={(e) => {
+                e.target.src = '/images/strategy_athlete_banner.jpg';
+              }}
             />
             <div className={`absolute inset-0 bg-gradient-to-r ${bannerFormData.gradient}`} />
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/50 pointer-events-none" />
@@ -975,19 +987,29 @@ export default function CategoriesView() {
             rows={2}
           />
 
-          {/* Image URL & Preset Pickers */}
-          <div className="space-y-2">
-            <TextInput
-              label="Banner Cover Photo URL"
+          {/* Custom Banner Picture Upload & Presets */}
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-zinc-900 uppercase tracking-wider flex items-center gap-2">
+                <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
+                <span>Banner Cover Picture</span>
+              </label>
+              <span className="text-[10px] text-zinc-500 font-medium">
+                Add your own picture from device or select a preset
+              </span>
+            </div>
+
+            <ImageUploader
+              label=""
+              hint="Upload your own picture (PNG, JPG, WEBP, SVG) from your computer or drag & drop"
+              aspectRatio="aspect-[21/9]"
               value={bannerFormData.image}
-              onChange={(e) => setBannerFormData((prev) => ({ ...prev, image: e.target.value }))}
-              placeholder="/images/inline_skates.jpg"
-              required
+              onChange={(url) => setBannerFormData((prev) => ({ ...prev, image: url }))}
             />
 
             <div>
               <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">
-                Quick Select Photo Preset:
+                Or Quick Select Photo Preset:
               </span>
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                 {BANNER_IMAGE_PRESETS.map((preset) => (
@@ -995,7 +1017,7 @@ export default function CategoriesView() {
                     key={preset.label}
                     type="button"
                     onClick={() => setBannerFormData((prev) => ({ ...prev, image: preset.url }))}
-                    className={`px-2 py-1 text-[10px] font-semibold rounded-md border cursor-pointer whitespace-nowrap ${
+                    className={`px-2.5 py-1 text-[10px] font-semibold rounded-md border cursor-pointer whitespace-nowrap transition-all ${
                       bannerFormData.image === preset.url
                         ? 'bg-zinc-950 text-white border-zinc-950 shadow-2xs'
                         : 'bg-zinc-50 hover:bg-zinc-100 text-zinc-700 border-zinc-200'

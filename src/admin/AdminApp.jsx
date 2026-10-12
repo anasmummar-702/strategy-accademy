@@ -20,6 +20,7 @@ import SettingsView from './modules/settings/SettingsView';
 import UsersView from './modules/users/UsersView';
 import AuditView from './modules/audit/AuditView';
 import GalleriesView from './modules/galleries/GalleriesView';
+import TrialLeadsView from './modules/leads/TrialLeadsView';
 import { Package } from 'lucide-react';
 
 function AdminMainContent() {
@@ -32,7 +33,7 @@ function AdminMainContent() {
   const isStoreAdmin = admin?.role === 'store_admin';
   const isSuperAdmin = admin?.role === 'super_admin';
 
-  const platformOnlyTabs = ['academy', 'homepage', 'banners', 'galleries', 'users', 'audit', 'navigation', 'faqs'];
+  const platformOnlyTabs = ['academy', 'homepage', 'banners', 'galleries', 'users', 'audit', 'navigation', 'faqs', 'trial-leads'];
   const storeOnlyTabs = ['products', 'product-add', 'categories', 'collections', 'orders', 'customers', 'coupons', 'reviews'];
 
   // Handle tab change with strict role authorization
@@ -140,13 +141,8 @@ function AdminMainContent() {
         <HomepageBuilderView />
       )}
 
-      {/* 6. Banners & Campaign Manager View (Admin Only) */}
-      {activeTab === 'banners' && !isStoreAdmin && (
-        <BannersView onNavigate={handleTabChange} />
-      )}
-
-      {/* 6b. Academy Galleries & Media Manager View (Admin Only) */}
-      {activeTab === 'galleries' && !isStoreAdmin && (
+      {/* 6. Academy Galleries & Media Manager View (Admin Only) */}
+      {(activeTab === 'galleries' || activeTab === 'banners') && !isStoreAdmin && (
         <GalleriesView />
       )}
 
@@ -200,6 +196,11 @@ function AdminMainContent() {
         <AuditView />
       )}
 
+      {/* 17. Trial Leads & CRM View (Admin Only) */}
+      {activeTab === 'trial-leads' && !isStoreAdmin && (
+        <TrialLeadsView />
+      )}
+
       {/* 17. Fallback Stub (For any unmapped route) */}
       {activeTab !== 'dashboard' &&
         activeTab !== 'products' &&
@@ -207,6 +208,7 @@ function AdminMainContent() {
         activeTab !== 'collections' &&
         activeTab !== 'homepage' &&
         activeTab !== 'banners' &&
+        activeTab !== 'galleries' &&
         activeTab !== 'orders' &&
         activeTab !== 'academy' &&
         activeTab !== 'customers' &&
@@ -217,6 +219,7 @@ function AdminMainContent() {
         activeTab !== 'settings' &&
         activeTab !== 'users' &&
         activeTab !== 'audit' &&
+        activeTab !== 'trial-leads' &&
         activeTab !== 'product-add' && (
         <div className="bg-white border border-zinc-200/90 rounded-xl p-8 space-y-4 text-center shadow-none">
           <div className="w-10 h-10 rounded-xl bg-zinc-100 border border-zinc-200/80 text-zinc-700 flex items-center justify-center mx-auto">
