@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { X, Share2, ChevronRight, Calendar, GraduationCap, ShoppingBag, Trophy, MessageSquare, Check, Copy, ExternalLink, ChevronDown, ChevronUp, Sparkles, Info } from 'lucide-react';
 
 // White vector basketball icon
@@ -48,67 +48,8 @@ function SkateIcon({ className = "w-6 h-6" }) {
 export default function HomeSection({ navigateTo, openTrialModal }) {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [currentBanner, setCurrentBanner] = useState(0);
 
-  // Pops up immediately on first scroll down
-  const [isPopped, setIsPopped] = useState(false);
-
-  // 4 Uploaded skating images
-  const bannerImages = [
-    { id: 1, url: '/images/banner_1.jpg', label: 'Safety & Kids Coaching' },
-    { id: 2, url: '/images/banner_2.jpg', label: 'Fun Group Skating' },
-    { id: 3, url: '/images/banner_3.jpg', label: 'Slalom & Agility Skills' },
-    { id: 4, url: '/images/banner_4.jpg', label: 'Certified Coach Guidance' },
-  ];
-
-  // Automatic 5-second background switch timer
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % bannerImages.length);
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [bannerImages.length]);
-
-  // Track single scroll down (wheel, touch swipe, or page scroll) to pop up buttons on the first scroll
-  useEffect(() => {
-    const handleWheel = (e) => {
-      if (e.deltaY > 10) {
-        setIsPopped(true);
-      }
-    };
-
-    const handleScroll = () => {
-      if (window.scrollY > 20) {
-        setIsPopped(true);
-      }
-    };
-
-    let touchStartY = 0;
-    const handleTouchStart = (e) => {
-      touchStartY = e.touches[0].clientY;
-    };
-
-    const handleTouchEnd = (e) => {
-      const touchEndY = e.changedTouches[0].clientY;
-      if (touchStartY - touchEndY > 20) {
-        setIsPopped(true);
-      }
-    };
-
-    window.addEventListener('wheel', handleWheel, { passive: true });
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('touchend', handleTouchEnd, { passive: true });
-
-    return () => {
-      window.removeEventListener('wheel', handleWheel);
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, []);
-
-  const profileUrl = typeof window !== 'undefined' ? window.location.origin : 'https://linktr.ee/StrategySkateAcademy';
+  const profileUrl = typeof window !== 'undefined' ? window.location.origin : 'https://linktr.ee/StrategyAcademy';
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(profileUrl);
@@ -120,8 +61,8 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Strategy Skate Academy & Pro Shop',
-          text: 'Join Strategy Skate Academy! Book a trial or browse pro skates & gear.',
+          title: 'Strategy Academy & Pro Shop',
+          text: 'Join Strategy Academy! Book a trial or browse pro skates & gear.',
           url: profileUrl,
         });
         return;
@@ -136,9 +77,9 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
     {
       id: 'trial',
       title: 'Book Trial Classes',
-      subtitle: '',
-      icon: <Calendar className="w-6 h-6" />,
-      iconBg: '#0035f5',
+      subtitle: 'Start your journey today',
+      icon: <Calendar className="w-5 h-5" />,
+      iconBg: 'linear-gradient(135deg, #0035f5 0%, #2f74ff 100%)',
       action: () => {
         navigateTo('trial');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -147,9 +88,9 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
     {
       id: 'basketball',
       title: 'Basketball Academy',
-      subtitle: '',
-      icon: <BasketballIcon className="w-6 h-6" />,
-      iconBg: '#0035f5',
+      subtitle: 'Train. Compete. Evolve.',
+      icon: <BasketballIcon className="w-5 h-5" />,
+      iconBg: 'linear-gradient(135deg, #0035f5 0%, #2f74ff 100%)',
       action: () => {
         navigateTo('basketball');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -158,9 +99,9 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
     {
       id: 'skating',
       title: 'Skating Academy',
-      subtitle: '',
-      icon: <SkateIcon className="w-6 h-6" />,
-      iconBg: '#0035f5',
+      subtitle: 'Learn. Skate. Excel.',
+      icon: <SkateIcon className="w-5 h-5" />,
+      iconBg: 'linear-gradient(135deg, #0035f5 0%, #2f74ff 100%)',
       action: () => {
         navigateTo('skating');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -169,9 +110,9 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
     {
       id: 'courses',
       title: 'Courses',
-      subtitle: '',
-      icon: <GraduationCap className="w-6 h-6" />,
-      iconBg: '#0035f5',
+      subtitle: 'Level up your skills',
+      icon: <GraduationCap className="w-5 h-5" />,
+      iconBg: 'linear-gradient(135deg, #0035f5 0%, #2f74ff 100%)',
       action: () => {
         navigateTo('programs');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -180,9 +121,9 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
     {
       id: 'proshop',
       title: 'Pro Shop & Sports Gear',
-      subtitle: '',
-      icon: <ShoppingBag className="w-6 h-6" />,
-      iconBg: '#0035f5',
+      subtitle: 'Top quality. Elite performance.',
+      icon: <ShoppingBag className="w-5 h-5" />,
+      iconBg: 'linear-gradient(135deg, #0035f5 0%, #2f74ff 100%)',
       action: () => {
         navigateTo('shop-home');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -193,136 +134,79 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
   return (
     <div className="home-reference-bg">
       
-      {/* Fullscreen Clear Background Slideshow (Switches Every 5 Seconds) */}
-      <div className="home-bg-carousel">
-        {bannerImages.map((b, idx) => (
-          <img
-            key={b.id}
-            src={b.url}
-            alt={b.label}
-            className={`home-bg-slide ${idx === currentBanner ? 'active' : 'inactive'}`}
-          />
-        ))}
-        {/* Transparent gradient allowing background images to stay crisp and clear */}
+      {/* Dark electric sports background: spotlight, angled light shards, halftone, grain */}
+      <div className="home-bg-carousel" aria-hidden="true">
+        <div className="home-bg-spotlight" />
+
+        {/* Giant faded "S" emblem from the logo */}
+        <div className="home-bg-emblem-wrap">
+          <div className="home-bg-emblem-glow">
+            <div className="home-bg-emblem home-bg-emblem--glow" />
+          </div>
+          <div className="home-bg-emblem home-bg-emblem--fill" />
+          <div className="home-bg-emblem home-bg-emblem--edge" />
+        </div>
+
+        <div className="home-bg-shard home-bg-shard--r" />
+        <div className="home-bg-shard home-bg-shard--r-line" />
+        <div className="home-bg-shard home-bg-shard--r-thin" />
+        <div className="home-bg-shard home-bg-shard--l" />
+        <div className="home-bg-shard home-bg-shard--l-line" />
+
+        <div className="home-bg-halftone home-bg-halftone--tl" />
+        <div className="home-bg-halftone home-bg-halftone--br" />
+
+        <div className="home-bg-stage" />
+
+        <div className="home-bg-sparks">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <span key={i} style={{ left: `${(i * 37 + 5) % 100}%`, animationDelay: `${(i * 0.9) % 8}s`, animationDuration: `${8 + (i % 5)}s` }} />
+          ))}
+        </div>
+
+        <div className="home-bg-grain" />
         <div className="home-bg-overlay" />
       </div>
 
-      {/* Top App Header (Matching Reference Navigation Bar) */}
-      <div className="reference-app-bar">
-        {/* Reset / Scroll to Top */}
-        <button 
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setIsPopped(false);
-          }} 
-          className="app-bar-btn"
-          title="Reset to Top"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        {/* Center link handle */}
-        <div className="flex items-center gap-1 text-xs font-bold text-white/90">
-          <span className="text-white/60">linktr.ee/</span>
-          <span className="text-white">StrategySkateAcademy</span>
-        </div>
-
-        {/* Right Action Icons: Share */}
-        <div className="flex items-center gap-2">
-          {/* Working Share Button */}
-          <button 
-            onClick={handleNativeShare}
-            className="app-bar-btn" 
-            title="Share Strategy Skate Academy"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content Container Centered Over Clear Background */}
+      {/* Main Content: logo + links animate in automatically */}
       <div className="home-main-center-wrapper">
         <div className="container max-w-xl mx-auto px-4 relative z-10 w-full">
-          
-          {/* Profile Header Area */}
+
           <div className="hero-profile-container">
-            <h1 className="hero-profile-handle">
-              @StrategySkateAcademy
+            <h1 className="hero-logo-wrap">
+              <span className="hero-logo-halo" aria-hidden="true" />
+              <img
+                src="/images/strategy_academy_logo_v2.webp"
+                alt="Strategy Academy"
+                className="hero-logo-img"
+              />
             </h1>
           </div>
 
-          {/* Subtle Indicator / Prompt if not popped yet */}
-          {!isPopped && (
-            <div className="text-center mt-6 animate-pulse">
+          <div className="reference-pill-list">
+            {portalLinks.map((item, idx) => (
               <button
-                onClick={() => setIsPopped(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white/90 text-xs font-semibold hover:bg-black/60 hover:border-cyan-400/50 transition-all shadow-lg"
+                key={item.id}
+                onClick={item.action}
+                className="reference-pill-card home-card-enter"
+                style={{ animationDelay: `${0.9 + idx * 0.12}s` }}
               >
-                <span>Scroll down or tap to view</span>
-                <ChevronDown className="w-4 h-4 text-cyan-400 animate-bounce" />
+                <span className="pill-card-streak" aria-hidden="true" />
+                <div className="pill-card-icon">
+                  {item.icon}
+                </div>
+                <div className="pill-card-body">
+                  <span className="pill-card-title">{item.title}</span>
+                  {item.subtitle && (
+                    <span className="pill-card-subtitle">{item.subtitle}</span>
+                  )}
+                </div>
+                <div className="pill-card-arrow">
+                  <ChevronRight className="w-5 h-5" />
+                </div>
               </button>
-            </div>
-          )}
-
-          {/* =========================================================================
-             POPPED CONTENT: OUR COURSES & SKATE HUB WITH WHITE PILL BUTTONS (SLOW SLIDE-IN)
-             ========================================================================= */}
-          {isPopped && (
-            <div className="portal-pop-active">
-              
-              <div className="flex items-center justify-end px-2 mb-3">
-                {/* Minimize button to enjoy clear photo background again */}
-                <button
-                  onClick={() => {
-                    setIsPopped(false);
-                  }}
-                  className="text-xs text-white/80 hover:text-cyan-300 flex items-center gap-1 font-semibold px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/20"
-                  title="Minimize Hub"
-                >
-                  <span>Minimize</span>
-                  <ChevronUp className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Stacked Pill Card Buttons (Exact Reference Composition) */}
-              <div className="reference-pill-list">
-                {portalLinks.map((item) => (
-                  <div key={item.id} className="relative">
-                    <button
-                      onClick={item.action}
-                      className="reference-pill-card group"
-                    >
-                      {/* Left Circle Icon */}
-                      <div 
-                        className="pill-card-icon"
-                        style={{ backgroundColor: item.iconBg }}
-                      >
-                        {item.icon}
-                      </div>
-
-                      {/* Center Title & Subtitle */}
-                      <div className="pill-card-body">
-                        <span className="pill-card-title group-hover:text-cyan-600 transition-colors">
-                          {item.title}
-                        </span>
-                        {item.subtitle && (
-                          <span className="pill-card-subtitle">
-                            {item.subtitle}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Clean Right Arrow Indicator */}
-                      <div className="text-white/60 group-hover:text-cyan-300 group-hover:translate-x-1 transition-all mr-1 relative z-10">
-                        <ChevronRight className="w-5 h-5" />
-                      </div>
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-            </div>
-          )}
+            ))}
+          </div>
 
         </div>
       </div>
@@ -336,7 +220,7 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
             <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
               <div className="flex items-center gap-2">
                 <Share2 className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-lg font-bold font-['Outfit']">Share Strategy Skate Academy</h3>
+                <h3 className="text-lg font-bold font-['Outfit']">Share Strategy Academy</h3>
               </div>
               <button 
                 onClick={() => setIsShareOpen(false)}
@@ -353,7 +237,7 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
             {/* Direct Social Share Buttons */}
             <div className="share-social-grid">
               <a
-                href={`https://api.whatsapp.com/send?text=${encodeURIComponent('Check out Strategy Skate Academy & Pro Shop! Book free trials and explore speed skates: ' + profileUrl)}`}
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent('Check out Strategy Academy & Pro Shop! Book free trials and explore speed skates: ' + profileUrl)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="share-social-btn"
@@ -363,7 +247,7 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
               </a>
 
               <a
-                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('Check out Strategy Skate Academy & Pro Shop! ' + profileUrl)}`}
+                href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('Check out Strategy Academy & Pro Shop! ' + profileUrl)}`}
                 target="_blank"
                 rel="noreferrer"
                 className="share-social-btn"
@@ -373,7 +257,7 @@ export default function HomeSection({ navigateTo, openTrialModal }) {
               </a>
 
               <a
-                href={`mailto:?subject=${encodeURIComponent('Join me at Strategy Skate Academy!')}&body=${encodeURIComponent('Hey! Check out Strategy Skate Academy: ' + profileUrl)}`}
+                href={`mailto:?subject=${encodeURIComponent('Join me at Strategy Academy!')}&body=${encodeURIComponent('Hey! Check out Strategy Academy: ' + profileUrl)}`}
                 className="share-social-btn"
               >
                 <span className="text-xl">✉️</span>

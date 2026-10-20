@@ -5,6 +5,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import HomeSection from './components/HomeSection';
 import ProgramsSection from './components/ProgramsSection';
+import CoursesComingSoon from './components/CoursesComingSoon';
 import AboutSection from './components/AboutSection';
 import ContactSection from './components/ContactSection';
 import FreeTrialPage from './components/FreeTrialPage';
@@ -25,6 +26,9 @@ import CareersPage from './components/CareersPage';
 import ProductDetailPage from './components/ProductDetailPage';
 import AdminApp from './admin/AdminApp';
 import { CheckCircle2 } from 'lucide-react';
+
+// Set to false to show the full Courses / Programs page again
+const COURSES_COMING_SOON = true;
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -231,7 +235,8 @@ export default function App() {
        activeTab !== 'privacy' && 
        activeTab !== 'shipping' && 
        activeTab !== 'faqs' && 
-       activeTab !== 'careers' && (
+       activeTab !== 'careers' && 
+       !(activeTab === 'programs' && COURSES_COMING_SOON) && (
         <Header
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -311,9 +316,16 @@ export default function App() {
         )}
 
         {activeTab === 'programs' && (
-          <ProgramsSection
-            openTrialModal={goToTrial}
-          />
+          COURSES_COMING_SOON ? (
+            <CoursesComingSoon
+              navigateTo={navigateTo}
+              openTrialModal={goToTrial}
+            />
+          ) : (
+            <ProgramsSection
+              openTrialModal={goToTrial}
+            />
+          )
         )}
 
         {(activeTab === 'about' || activeTab === 'skating') && (
@@ -437,7 +449,8 @@ export default function App() {
        activeTab !== 'privacy' && 
        activeTab !== 'shipping' && 
        activeTab !== 'faqs' && 
-       activeTab !== 'careers' && (
+       activeTab !== 'careers' && 
+       !(activeTab === 'programs' && COURSES_COMING_SOON) && (
         <Footer
           onNavigate={navigateTo}
           navigateTo={navigateTo}

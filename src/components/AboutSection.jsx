@@ -33,7 +33,7 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsScratchModalOpen(true);
-    }, 600);
+    }, 1500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -187,7 +187,7 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
         {/* Hero Banner Box with 28px border-radius and Floating Satisfied Customers Badge */}
         <div className="relative rounded-[28px] overflow-hidden shadow-2xl bg-slate-900 border border-slate-200 aspect-[4/3] sm:aspect-[16/9] lg:aspect-[21/9] max-h-[620px] w-full group">
           <img 
-            src="/images/skating_angels/children_skating_group.png" 
+            src="/images/skating_angels/children_skating_group_hd.webp" 
             alt="UAE Skating Angels - Kids Roller Skating Academy" 
             className="w-full h-full object-cover object-[center_25%] group-hover:scale-105 transition-transform duration-700 ease-out"
           />
@@ -195,18 +195,6 @@ export default function AboutSection({ navigateTo, openTrialModal }) {
 
           {/* Floating Glassmorphic Stats Badge (Top-Left per authentic UI) */}
           <div className="absolute top-4 left-4 sm:top-8 sm:left-8 z-10 flex flex-col items-start gap-2.5">
-            {/* Teal diagonal arrow circle */}
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-[#20b2aa] text-white flex items-center justify-center shadow-lg shadow-teal-900/30 transform hover:rotate-45 transition-transform duration-300">
-              <svg className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2.5]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 19L5 5m14 0v14H5" />
-              </svg>
-            </div>
-
-            {/* Star of life / Snowflake icon */}
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/90 backdrop-blur-md text-[#20b2aa] flex items-center justify-center shadow-md">
-              <span className="text-2xl font-bold leading-none select-none">✱</span>
-            </div>
-
             {/* 2,500+ Customers Satisfied Card */}
             <div className="bg-slate-950/80 backdrop-blur-md border border-white/20 px-4 py-2.5 rounded-2xl text-white shadow-xl">
               <div className="font-['Unbounded',sans-serif] text-xl sm:text-2xl font-black text-white flex items-baseline gap-0.5">

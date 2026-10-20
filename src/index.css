@@ -405,7 +405,7 @@ select.admin-input-control:focus {
 }
 
 /* ==========================================================================
-   Home Page Reference Design Composition Styles
+   Home Page – Dark Electric Sports Academy Design
    ========================================================================== */
 .home-reference-bg {
   min-height: 100vh;
@@ -415,9 +415,10 @@ select.admin-input-control:focus {
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
+  background: #02030a;
 }
 
-/* Fullscreen Clear Background Carousel */
+/* --- Background layers --- */
 .home-bg-carousel {
   position: fixed;
   inset: 0;
@@ -426,54 +427,233 @@ select.admin-input-control:focus {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
+  background:
+    radial-gradient(ellipse 100% 50% at 50% -6%, #08228a 0%, #06165a 20%, #030a2c 42%, #010412 66%, #000107 100%);
 }
 
-.home-bg-slide {
+/* Stadium spotlight cone behind the logo */
+.home-bg-spotlight {
+  position: absolute;
+  top: -12vh;
+  left: 50%;
+  width: 110vmax;
+  height: 105vh;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(120, 175, 255, 0.22) 0%, rgba(40, 110, 255, 0.07) 45%, rgba(0, 60, 255, 0) 80%);
+  clip-path: polygon(44% 0, 56% 0, 88% 100%, 12% 100%);
+  filter: blur(34px);
+  animation: homeSpotBreath 6s ease-in-out infinite;
+}
+@keyframes homeSpotBreath {
+  0%, 100% { opacity: 0.8; }
+  50%      { opacity: 1; }
+}
+
+/* Giant faded "S" emblem watermark */
+.home-bg-emblem-wrap {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 112vh;
+  aspect-ratio: 731 / 786;
+  transform: translate(-50%, -50%);
+  animation: homeEmblemFloat 12s ease-in-out infinite alternate;
+}
+
+.home-bg-emblem {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
-  transition: opacity 1.2s ease-in-out;
+  -webkit-mask: url("/images/strategy_s_emblem.webp") center / contain no-repeat;
+  mask: url("/images/strategy_s_emblem.webp") center / contain no-repeat;
 }
 
-.home-bg-slide.active {
-  opacity: 1;
+/* Solid blue silhouette of the S */
+.home-bg-emblem--fill {
+  background: linear-gradient(160deg, #4f8dff 0%, #1d4fff 40%, #0a2a9e 75%, rgba(10, 42, 158, 0) 100%);
+  opacity: 0.21;
 }
 
-.home-bg-slide.inactive {
+/* Brighter top-edge sheen that slowly sweeps */
+.home-bg-emblem--edge {
+  background: linear-gradient(115deg, transparent 30%, rgba(170, 205, 255, 0.55) 45%, transparent 60%);
+  background-size: 250% 250%;
+  opacity: 0.25;
+  animation: homeEmblemSheen 9s ease-in-out infinite;
+}
+
+/* Soft glow behind the S */
+.home-bg-emblem-glow {
+  position: absolute;
+  inset: 0;
+  filter: blur(46px);
+  opacity: 0.3;
+}
+.home-bg-emblem--glow {
+  background: #0b5bff;
+}
+
+@keyframes homeEmblemSheen {
+  0%   { background-position: 100% 100%; }
+  60%  { background-position: 0% 0%; }
+  100% { background-position: 0% 0%; }
+}
+
+@keyframes homeEmblemFloat {
+  from { transform: translate(-50%, -50%) scale(1); }
+  to   { transform: translate(-50%, -52%) scale(1.03); }
+}
+
+/* Angled light shards – echo the logo's lightning slant */
+.home-bg-shard {
+  position: absolute;
+  inset: 0;
+}
+
+.home-bg-shard--r {
+  background: linear-gradient(200deg, rgba(0, 110, 255, 0.24) 0%, rgba(0, 80, 255, 0.07) 45%, rgba(0, 60, 255, 0) 80%);
+  clip-path: polygon(80% 0, 97% 0, 75% 100%, 58% 100%);
+  animation: homeShardGlow 7s ease-in-out infinite;
+}
+.home-bg-shard--r-line {
+  background: linear-gradient(180deg, rgba(170, 210, 255, 0.9) 0%, rgba(80, 150, 255, 0.35) 40%, transparent 85%);
+  clip-path: polygon(98.4% 0, 99.1% 0, 77.1% 100%, 76.4% 100%);
+  filter: drop-shadow(0 0 6px #3f8cff);
+}
+.home-bg-shard--r-thin {
+  background: linear-gradient(180deg, rgba(120, 180, 255, 0.5) 0%, transparent 60%);
+  clip-path: polygon(76% 0, 76.4% 0, 54.4% 100%, 54% 100%);
+}
+
+.home-bg-shard--l {
+  background: linear-gradient(20deg, rgba(0, 130, 255, 0.21) 0%, rgba(0, 80, 255, 0.06) 40%, rgba(0, 60, 255, 0) 75%);
+  clip-path: polygon(16% 0, 27% 0, 9% 100%, -2% 100%);
+  animation: homeShardGlow 7s ease-in-out 3.5s infinite;
+}
+.home-bg-shard--l-line {
+  background: linear-gradient(0deg, rgba(150, 200, 255, 0.85) 0%, rgba(80, 150, 255, 0.3) 40%, transparent 80%);
+  clip-path: polygon(28.3% 0, 28.9% 0, 10.9% 100%, 10.3% 100%);
+  filter: drop-shadow(0 0 6px #3f8cff);
+}
+
+@keyframes homeShardGlow {
+  0%, 100% { opacity: 0.75; }
+  50%      { opacity: 1; }
+}
+
+/* Halftone dot corners (sports-poster texture) */
+.home-bg-halftone {
+  position: absolute;
+  width: 46vmax;
+  height: 46vmax;
+  background-image: radial-gradient(rgba(110, 165, 255, 0.32) 1.2px, transparent 1.6px);
+  background-size: 13px 13px;
+}
+.home-bg-halftone--tl {
+  top: 0; left: 0;
+  -webkit-mask-image: radial-gradient(circle at 0% 0%, #000 0%, rgba(0, 0, 0, 0.4) 35%, transparent 62%);
+  mask-image: radial-gradient(circle at 0% 0%, #000 0%, rgba(0, 0, 0, 0.4) 35%, transparent 62%);
+}
+.home-bg-halftone--br {
+  bottom: 0; right: 0;
+  -webkit-mask-image: radial-gradient(circle at 100% 100%, #000 0%, rgba(0, 0, 0, 0.4) 35%, transparent 62%);
+  mask-image: radial-gradient(circle at 100% 100%, #000 0%, rgba(0, 0, 0, 0.4) 35%, transparent 62%);
+}
+
+/* Floor glow – like an arena stage */
+.home-bg-stage {
+  position: absolute;
+  left: 50%;
+  bottom: -30vh;
+  width: 130vw;
+  height: 55vh;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 30%, rgba(0, 95, 255, 0.38) 0%, rgba(0, 60, 220, 0.12) 45%, transparent 70%);
+  filter: blur(10px);
+}
+
+/* Rising sparks */
+.home-bg-sparks { position: absolute; inset: 0; }
+.home-bg-sparks span {
+  position: absolute;
+  bottom: -10px;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #b5d3ff;
+  box-shadow: 0 0 6px #4d9bff, 0 0 12px #0057ff;
   opacity: 0;
+  animation: homeSparkRise 9s linear infinite;
+}
+@keyframes homeSparkRise {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  10%  { opacity: 0.9; }
+  80%  { opacity: 0.4; }
+  100% { transform: translateY(-90vh) translateX(24px); opacity: 0; }
+}
+
+/* Film grain for a premium print feel */
+.home-bg-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.09;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 
 .home-bg-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 0, 0, 0.35) 0%,
-    rgba(0, 0, 0, 0.05) 35%,
-    rgba(0, 0, 0, 0.45) 70%,
-    rgba(7, 9, 19, 0.85) 100%
-  );
+  background: radial-gradient(ellipse 95% 85% at 50% 40%, transparent 45%, rgba(0, 0, 0, 0.72) 100%);
   z-index: 1;
 }
 
+/* --- Top bar --- */
 .reference-app-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 14px 20px;
   position: sticky;
   top: 0;
   z-index: 40;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(3, 6, 20, 0.45);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(120, 160, 255, 0.12);
   flex-shrink: 0;
 }
 
+.app-bar-handle {
+  display: flex;
+  align-items: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #ffffff;
+}
+.app-bar-handle-muted { color: rgba(170, 195, 255, 0.6); font-weight: 500; }
+
+.app-bar-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  border: 1px solid rgba(160, 190, 255, 0.22);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.app-bar-btn:hover {
+  background: #0050ff;
+  border-color: #3b82ff;
+  box-shadow: 0 0 18px rgba(0, 90, 255, 0.6);
+}
+
+/* --- Hero --- */
 .home-main-center-wrapper {
   flex: 1;
   display: flex;
@@ -481,229 +661,237 @@ select.admin-input-control:focus {
   justify-content: center;
   align-items: center;
   width: 100%;
-  padding: 20px 0;
+  padding: 20px 0 36px;
   position: relative;
   z-index: 10;
   margin: auto 0;
 }
 
-.app-bar-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(8px);
-}
-
-.app-bar-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: scale(1.05);
-}
-
 .hero-profile-container {
   position: relative;
   text-align: center;
-  padding-top: 8px;
-  padding-bottom: 16px;
+  padding-bottom: 26px;
 }
 
-.hero-profile-handle {
-  font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 2.25rem;
-  color: #ffffff;
-  text-shadow: 0 3px 16px rgba(0, 0, 0, 0.9);
-  letter-spacing: -0.01em;
-}
-
-@media (max-width: 640px) {
-  .hero-profile-handle {
-    font-size: 1.85rem;
-  }
-  .reference-pill-card {
-    padding: 12px 18px !important;
-    gap: 12px !important;
-  }
-  .pill-card-icon {
-    width: 44px !important;
-    height: 44px !important;
-  }
-  .pill-card-title {
-    font-size: 0.98rem !important;
-  }
-  .pill-card-subtitle {
-    font-size: 0.72rem !important;
-  }
-  .home-main-center-wrapper {
-    padding: 12px 0 16px;
-  }
-}
-
-.banner-dots-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 8px;
-  margin-bottom: 16px;
+.hero-logo-wrap {
   position: relative;
-  z-index: 20;
-}
-
-.banner-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.45);
-  border: none;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  padding: 0;
-}
-
-.banner-dot.active {
-  width: 28px;
-  background: #00F2FE;
-  box-shadow: 0 0 12px rgba(0, 242, 254, 0.9);
-}
-
-/* ==========================================================================
-   Scroll Pop Up Animation (Slow & Smooth) & Scroll Hint
-   ========================================================================== */
-@keyframes popUpSlow {
-  0% {
-    opacity: 0;
-    transform: translateY(80px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.portal-pop-active {
-  animation: popUpSlow 1.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.scroll-hint-container {
+  margin: 0;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
+}
+
+.hero-logo-halo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 80%;
+  height: 70%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(0, 110, 255, 0.45) 0%, transparent 70%);
+  filter: blur(30px);
+  opacity: 0;
+  animation: homeHaloIn 1.2s ease-out 0.4s forwards, homeHaloPulse 4s ease-in-out 1.6s infinite;
+}
+
+.hero-logo-img {
+  position: relative;
+  width: min(400px, 72vw);
+  height: auto;
+  margin: 0 auto;
+  user-select: none;
+  -webkit-user-drag: none;
+  opacity: 0;
+  animation: homeLogoIn 1.3s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+}
+
+@keyframes homeLogoIn {
+  0%   { opacity: 0; transform: scale(0.82) translateY(14px); filter: blur(10px) brightness(2.2); }
+  55%  { opacity: 1; filter: blur(0) brightness(1.5); }
+  70%  { filter: brightness(1.9); }
+  100% { opacity: 1; transform: scale(1) translateY(0); filter: brightness(1); }
+}
+@keyframes homeHaloIn { to { opacity: 1; } }
+@keyframes homeHaloPulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  50%      { transform: translate(-50%, -50%) scale(1.12); opacity: 0.7; }
+}
+
+.hero-logo-tagline {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  cursor: pointer;
-  padding: 16px 28px;
-  border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #ffffff;
-  transition: all 0.3s ease;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  margin-top: 36px;
-}
-
-.scroll-hint-container:hover {
-  background: rgba(0, 242, 254, 0.25);
-  border-color: #00F2FE;
-  transform: translateY(-4px);
-  box-shadow: 0 14px 35px rgba(0, 242, 254, 0.3);
-}
-
-.scroll-progress-pill {
-  font-size: 11px;
-  font-weight: 800;
+  gap: 12px;
+  margin-top: 4px;
+  font-family: var(--font-heading);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #00F2FE;
+  color: #dbe6ff;
+  opacity: 0;
+  animation: homeFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards;
 }
 
-/* ==========================================================================
-   Liquid Glass Pill Buttons Style
-   ========================================================================== */
+.hero-tagline-line {
+  width: 34px;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, #3b82ff);
+  box-shadow: 0 0 8px rgba(59, 130, 255, 0.8);
+}
+.hero-tagline-line:last-child {
+  background: linear-gradient(90deg, #3b82ff, transparent);
+}
+
+.hero-profile-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px;
+  margin-top: 18px;
+  border-radius: 9999px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #e6edff;
+  background: rgba(8, 16, 45, 0.7);
+  border: 1px solid rgba(70, 130, 255, 0.35);
+  box-shadow: inset 0 0 12px rgba(0, 80, 255, 0.12);
+  opacity: 0;
+  animation: homeFadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.75s forwards;
+}
+
+.hero-eyebrow-icon {
+  color: #4d8dff;
+  filter: drop-shadow(0 0 4px rgba(77, 141, 255, 0.9));
+}
+
+.hero-eyebrow-sep {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #3b82ff;
+  box-shadow: 0 0 6px #3b82ff;
+}
+
+@keyframes homeFadeUp {
+  from { opacity: 0; translate: 0 18px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+
+/* --- Link cards (auto-entrance, staggered) --- */
 .reference-pill-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   width: 100%;
-  max-width: 540px;
+  max-width: 500px;
   margin: 0 auto;
+}
+
+.home-card-enter {
+  opacity: 0;
+  animation: homeFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .reference-pill-card {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   width: 100%;
-  padding: 14px 22px;
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(28px) saturate(190%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
-  border-radius: 9999px;
-  border: 1.5px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 
-    0 12px 35px 0 rgba(0, 0, 0, 0.4),
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.8),
-    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.25);
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(16, 32, 86, 0.55) 0%, rgba(6, 12, 36, 0.75) 100%);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid rgba(70, 130, 255, 0.32);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(140, 180, 255, 0.12),
+    inset 0 0 24px rgba(0, 80, 255, 0.08);
   cursor: pointer;
-  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  text-decoration: none;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+  text-align: left;
   position: relative;
   overflow: hidden;
 }
 
+/* Hover shine sweep */
 .reference-pill-card::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
-  height: 48%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0) 100%);
-  border-radius: 9999px 9999px 0 0;
+  bottom: 0;
+  left: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(120, 170, 255, 0.14), transparent);
+  transform: skewX(-20deg);
+  transition: left 0.7s ease;
   pointer-events: none;
 }
 
-.reference-pill-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  background: rgba(255, 255, 255, 0.28);
-  border-color: rgba(255, 255, 255, 0.9);
-  box-shadow: 
-    0 18px 45px 0 rgba(0, 242, 254, 0.35),
-    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
-    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);
+/* Diagonal light streak in the top-right corner */
+.pill-card-streak {
+  position: absolute;
+  top: -30%;
+  right: 22px;
+  width: 2px;
+  height: 120%;
+  background: linear-gradient(180deg, rgba(120, 175, 255, 0.95) 0%, rgba(59, 130, 255, 0.4) 40%, transparent 75%);
+  transform: rotate(32deg);
+  transform-origin: top;
+  box-shadow: 0 0 10px rgba(59, 130, 255, 0.8);
+  pointer-events: none;
+  z-index: 1;
+}
+.pill-card-streak::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -26px;
+  width: 1px;
+  height: 70%;
+  background: linear-gradient(180deg, rgba(90, 150, 255, 0.5), transparent);
 }
 
+.reference-pill-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(100, 160, 255, 0.75);
+  background: linear-gradient(135deg, rgba(22, 46, 120, 0.65) 0%, rgba(8, 16, 46, 0.8) 100%);
+  box-shadow:
+    0 14px 36px rgba(0, 60, 255, 0.35),
+    0 0 20px rgba(40, 110, 255, 0.25),
+    inset 0 1px 0 rgba(160, 200, 255, 0.2),
+    inset 0 0 28px rgba(0, 90, 255, 0.14);
+}
+.reference-pill-card:hover::before { left: 120%; }
+
 .pill-card-icon {
-  width: 50px;
-  height: 50px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: #ffffff;
-  font-size: 1.25rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  color: #e8efff;
+  background: radial-gradient(circle at 50% 40%, rgba(30, 80, 220, 0.35) 0%, rgba(5, 12, 40, 0.9) 75%);
+  border: 1.5px solid rgba(80, 145, 255, 0.85);
+  box-shadow: 0 0 14px rgba(0, 100, 255, 0.55), inset 0 0 10px rgba(0, 100, 255, 0.35);
   position: relative;
   z-index: 2;
+  transition: box-shadow 0.25s ease;
+}
+.reference-pill-card:hover .pill-card-icon {
+  box-shadow: 0 0 22px rgba(30, 120, 255, 0.85), inset 0 0 12px rgba(0, 110, 255, 0.5);
 }
 
 .pill-card-body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  text-align: left;
   flex: 1;
   min-width: 0;
   position: relative;
@@ -712,40 +900,121 @@ select.admin-input-control:focus {
 
 .pill-card-title {
   font-family: var(--font-heading);
-  font-weight: 800;
-  font-size: 1.08rem;
+  font-weight: 700;
+  font-size: 1.05rem;
   color: #ffffff;
   line-height: 1.25;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
 }
 
 .pill-card-subtitle {
-  font-size: 0.76rem;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.78rem;
+  color: #9fb0d4;
   font-weight: 500;
-  margin-top: 2px;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  margin-top: 3px;
 }
 
-.pill-card-more {
-  color: rgba(255, 255, 255, 0.85);
+.pill-card-arrow {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  transition: all 0.2s ease;
+  flex-shrink: 0;
+  color: #4d8dff;
+  filter: drop-shadow(0 0 6px rgba(77, 141, 255, 0.7));
   position: relative;
   z-index: 2;
+  transition: transform 0.25s ease, color 0.25s ease;
+}
+.reference-pill-card:hover .pill-card-arrow {
+  color: #8fb8ff;
+  transform: translateX(4px);
 }
 
-.reference-pill-card:hover .pill-card-more {
-  color: #00F2FE;
-  background: rgba(0, 242, 254, 0.25);
-  border-color: rgba(0, 242, 254, 0.6);
+.pill-card-icon svg { width: 21px; height: 21px; }
+.pill-card-arrow svg { width: 20px; height: 20px; }
+.hero-eyebrow-icon { width: 14px; height: 14px; }
+.home-social-btn svg { width: 19px; height: 19px; }
+
+/* --- Join the community --- */
+.home-community {
+  max-width: 500px;
+  margin: 22px auto 0;
+  padding: 14px 16px 16px;
+  border-radius: 18px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(10, 22, 64, 0.55) 0%, rgba(4, 9, 28, 0.7) 100%);
+  border: 1px solid rgba(70, 130, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(140, 180, 255, 0.08);
+  opacity: 0;
+  animation: homeFadeUp 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+.home-community-label {
+  display: block;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #4d8dff;
+  margin-bottom: 12px;
+}
+
+.home-community-icons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+
+.home-social-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: rgba(8, 16, 45, 0.8);
+  border: 1px solid rgba(110, 155, 255, 0.35);
+  transition: all 0.25s ease;
+}
+.home-social-btn:hover {
+  color: #ffffff;
+  background: #0b47ff;
+  border-color: #6ea2ff;
+  box-shadow: 0 0 18px rgba(30, 110, 255, 0.75);
+  transform: translateY(-2px);
+}
+
+/* --- Mobile --- */
+@media (max-width: 640px) {
+  .reference-pill-card { padding: 12px 14px; gap: 14px; }
+  .pill-card-icon { width: 42px; height: 42px; }
+  .pill-card-title { font-size: 0.98rem; }
+  .pill-card-subtitle { font-size: 0.74rem; }
+  .home-main-center-wrapper { padding: 18px 0 28px; }
+  .hero-profile-container { padding-bottom: 20px; }
+  .hero-logo-tagline { font-size: 0.66rem; letter-spacing: 0.18em; gap: 8px; }
+  .hero-tagline-line { width: 22px; }
+  .hero-profile-eyebrow { font-size: 0.6rem; gap: 8px; padding: 6px 14px; }
+  .home-community-icons { gap: 14px; }
+  .home-bg-halftone { width: 55vmax; height: 55vmax; opacity: 0.6; }
+  .home-bg-shard--r { clip-path: polygon(78% 0, 100% 0, 72% 100%, 50% 100%); }
+  .home-bg-emblem-wrap { height: 92vh; left: 58%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-bg-spotlight, .home-bg-shard, .home-bg-emblem-wrap,
+  .home-bg-sparks span, .hero-logo-halo {
+    animation: none !important;
+  }
+  .hero-logo-img, .hero-profile-eyebrow, .home-card-enter, .hero-logo-tagline, .home-community {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  .hero-logo-halo { opacity: 1; }
+}
+
+
 /* ==========================================================================
    Share & Options Popups
    ========================================================================== */
