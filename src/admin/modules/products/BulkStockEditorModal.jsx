@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Modal from '../../components/Modal';
 import StockControl from '../../components/StockControl';
-import { Loader2, Save, Search, Sparkles, AlertTriangle, CheckCircle2, Sliders } from 'lucide-react';
+import { Loader2, Save, Search, Sparkles } from 'lucide-react';
 
 export default function BulkStockEditorModal({
   isOpen,
@@ -19,12 +19,12 @@ export default function BulkStockEditorModal({
       products.map((p) => ({
         id: p.id,
         name: p.name,
-        sku: p.sku,
+        sku: p.sku || '',
         category: p.category,
         image: p.image || p.images?.[0] || '/images/strategy_basketball_ball.jpg',
         stockQuantity: p.stockQuantity ?? p.stock ?? 0,
         lowStockThreshold: p.lowStockThreshold || 5,
-        priceAed: p.priceFils ? (p.priceFils / 100).toFixed(2) : (p.price || 0).toFixed(2),
+        priceAed: p.priceFils ? (p.priceFils / 100).toFixed(2) : (Number(p.price) || 0).toFixed(2),
         status: p.status || 'published',
       }))
     );
@@ -63,9 +63,8 @@ export default function BulkStockEditorModal({
 
   const filteredProducts = useMemo(() => {
     return editedProducts.filter((p) => {
-      const matchSearch =
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.sku.toLowerCase().includes(search.toLowerCase());
+      const q = search.toLowerCase();
+      const matchSearch = (p.name || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q);
       if (!matchSearch) return false;
 
       if (filterMode === 'low') {
@@ -84,13 +83,33 @@ export default function BulkStockEditorModal({
   const outCount = editedProducts.filter((p) => p.stockQuantity === 0).length;
 
   const handleSaveAll = async () => {
+    // Only send products that actually changed
+    const original = new Map(
+      products.map((p) => [
+        p.id,
+        {
+          stockQuantity: p.stockQuantity ?? p.stock ?? 0,
+          priceAed: p.priceFils ? (p.priceFils / 100).toFixed(2) : (Number(p.price) || 0).toFixed(2),
+          status: p.status || 'published',
+        },
+      ])
+    );
+    const changed = editedProducts.filter((item) => {
+      const o = original.get(item.id);
+      return !o || o.stockQuantity !== item.stockQuantity || Number(o.priceAed) !== Number(item.priceAed) || o.status !== item.status;
+    });
+    if (changed.length === 0) {
+      onClose();
+      return;
+    }
+
     setLoading(true);
+    let serverOk = true;
     try {
       const token = localStorage.getItem('strategy_admin_token');
-      await Promise.all(
-        editedProducts.map(async (item) => {
-          const priceFils = Math.round(parseFloat(item.priceAed || 0) * 100);
-          await fetch(`http://localhost:5000/api/v1/admin/products/${item.id}`, {
+      const results = await Promise.all(
+        changed.map((item) =>
+          fetch(`http://localhost:5000/api/v1/admin/products/${item.id}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -98,29 +117,27 @@ export default function BulkStockEditorModal({
             },
             body: JSON.stringify({
               stockQuantity: item.stockQuantity,
-              priceFils,
+              priceFils: Math.round(parseFloat(item.priceAed || 0) * 100),
               status: item.status,
             }),
-          });
-        })
+          })
+        )
       );
-      onSaveSuccess(editedProducts);
-      onClose();
-    } catch (err) {
-      console.warn('API bulk update fallback:', err.message);
-      onSaveSuccess(editedProducts);
-      onClose();
-    } finally {
-      setLoading(false);
+      serverOk = results.every((r) => r.ok);
+    } catch {
+      serverOk = false; // server not reachable
     }
+    setLoading(false);
+    onSaveSuccess(changed, serverOk);
+    onClose();
   };
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Rapid Stock Updating & Inventory Matrix"
-      subtitle="Easily increment, decrement, or batch restock units across your entire sports catalog."
+      title="Update stock"
+      subtitle="Change stock for many products at once, then press Save."
       maxWidth="max-w-5xl"
     >
       <div className="space-y-4 font-['Plus_Jakarta_Sans',sans-serif]">
@@ -133,7 +150,7 @@ export default function BulkStockEditorModal({
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Filter by product name or SKU..."
+                placeholder="Search products"
                 style={{ color: '#09090b', backgroundColor: '#ffffff', paddingLeft: '2.25rem' }}
                 className="w-full pr-3 py-1.5 bg-white border border-zinc-300 rounded-lg text-xs font-normal text-zinc-900 focus:outline-none focus:border-zinc-950 admin-input-control"
               />
@@ -199,10 +216,10 @@ export default function BulkStockEditorModal({
             <thead className="sticky top-0 bg-zinc-50/95 backdrop-blur z-10 border-b border-zinc-200 text-[11px] font-semibold text-zinc-600 uppercase tracking-wider">
               <tr>
                 <th className="py-2.5 px-3.5">Product</th>
-                <th className="py-2.5 px-3.5 text-center">Stock & Inventory Stepper</th>
+                <th className="py-2.5 px-3.5 text-center">Stock</th>
                 <th className="py-2.5 px-3.5 text-center">Status</th>
                 <th className="py-2.5 px-3.5 text-center">Price (AED)</th>
-                <th className="py-2.5 px-3.5 text-center">Visibility</th>
+                <th className="py-2.5 px-3.5 text-center">On website</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 bg-white">
@@ -317,7 +334,7 @@ export default function BulkStockEditorModal({
               className="px-4 py-1.5 bg-zinc-950 hover:bg-black text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-xs"
             >
               {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-              <span>Save All Stock Changes</span>
+              <span>Save stock</span>
             </button>
           </div>
         </div>

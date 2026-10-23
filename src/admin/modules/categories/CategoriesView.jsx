@@ -27,8 +27,8 @@ import {
 } from 'lucide-react';
 import {
   getStoredCategoryBanners,
-  saveCategoryBanners,
   upsertCategoryBanner,
+  removeCategoryBanner,
   BANNER_IMAGE_PRESETS,
   BANNER_GRADIENT_PRESETS,
   DEFAULT_CATEGORY_BANNERS
@@ -196,13 +196,14 @@ export default function CategoriesView() {
   const handleOpenEdit = (cat) => {
     setEditingCategory(cat);
     const existingBanner = categoryBanners.find(
-      (b) => b.slug.toLowerCase() === (cat.slug || '').toLowerCase()
+      (b) => (b.slug || '').toLowerCase() === (cat.slug || '').toLowerCase()
     );
     setFormData({
       name: cat.name || '',
       slug: cat.slug || '',
       parentId: cat.parentId || '',
-      image: cat.image || '/images/strategy_basketball_ball.jpg',
+      // The picture in this form is the page banner: start from the current banner picture
+      image: existingBanner?.image || cat.image || '/images/strategy_basketball_ball.jpg',
       description: cat.description || '',
       displayOrder: cat.displayOrder || 1,
       status: cat.status || 'published',
@@ -229,8 +230,9 @@ export default function CategoriesView() {
           },
           body: JSON.stringify(formData),
         });
+        // Keep the category's own small picture; the form's picture is the banner picture
         setCategories((prev) =>
-          prev.map((c) => (c.id === editingCategory.id ? { ...c, ...formData } : c))
+          prev.map((c) => (c.id === editingCategory.id ? { ...c, ...formData, image: c.image } : c))
         );
       } else {
         const newCat = {
@@ -250,7 +252,7 @@ export default function CategoriesView() {
       }
 
       // Automatically sync / upsert banner configuration
-      upsertCategoryBanner(formData.slug, {
+      const saved = upsertCategoryBanner(formData.slug, {
         categoryName: formData.name,
         title: formData.bannerTitle || `${formData.name.toUpperCase()} GEAR`,
         badge: formData.bannerBadge || 'PRO PERFORMANCE GEAR',
@@ -259,11 +261,19 @@ export default function CategoriesView() {
         gradient: formData.bannerGradient || BANNER_GRADIENT_PRESETS[0].value,
         status: formData.status,
       });
+      // Page address changed: remove the banner left behind at the old address
+      if (saved && editingCategory?.slug && editingCategory.slug !== formData.slug) {
+        removeCategoryBanner(editingCategory.slug);
+      }
       loadBanners();
 
-      setToastMessage(`Category "${formData.name}" & storefront hero banner saved.`);
-    } catch (e) {
-      setToastMessage('Category & banner saved locally.');
+      setToastMessage(
+        saved
+          ? `Category "${formData.name}" saved.`
+          : "The banner was not saved: this browser's storage is full. Remove some uploaded pictures and try again."
+      );
+    } catch {
+      setToastMessage(`Category "${formData.name}" saved on this screen only (shop server is offline).`);
     } finally {
       setIsModalOpen(false);
       setTimeout(() => setToastMessage(''), 3500);
@@ -301,11 +311,7 @@ export default function CategoriesView() {
     next[idx] = next[targetIdx];
     next[targetIdx] = temp;
 
-    next.forEach((item, i) => {
-      item.displayOrder = i + 1;
-    });
-
-    setCategories(next);
+    setCategories(next.map((item, i) => ({ ...item, displayOrder: i + 1 })));
     setToastMessage('Category display sequence updated.');
     setTimeout(() => setToastMessage(''), 3000);
   };
@@ -350,23 +356,33 @@ export default function CategoriesView() {
     if (!bannerFormData.slug.trim()) return;
 
     const normalizedSlug = bannerFormData.slug.toLowerCase().replace(/[^a-z0-9-]+/g, '');
-    upsertCategoryBanner(normalizedSlug, {
+    if (!normalizedSlug) return;
+    const saved = upsertCategoryBanner(normalizedSlug, {
       ...bannerFormData,
       slug: normalizedSlug,
     });
+    if (!saved) {
+      setToastMessage("Not saved: this browser's storage is full. Remove some uploaded pictures and try again.");
+      setTimeout(() => setToastMessage(''), 6000);
+      return;
+    }
+    // Renamed the page address: remove the old copy so it isn't listed twice
+    if (editingBanner?.slug && editingBanner.slug.toLowerCase() !== normalizedSlug) {
+      removeCategoryBanner(editingBanner.slug);
+    }
     loadBanners();
     setIsBannerModalOpen(false);
-    setToastMessage(`Banner for "/${normalizedSlug}" updated live on storefront.`);
+    setToastMessage('Banner saved. It shows on the website straight away.');
     setTimeout(() => setToastMessage(''), 3500);
   };
 
   const handleQuickSwapImage = (banner, newImageUrl) => {
-    upsertCategoryBanner(banner.slug, {
+    const saved = upsertCategoryBanner(banner.slug, {
       ...banner,
       image: newImageUrl,
     });
     loadBanners();
-    setToastMessage(`Updated photo for "${banner.title}" to ${newImageUrl.split('/').pop()}`);
+    setToastMessage(saved ? `Picture changed for "${banner.title}".` : "Not saved: this browser's storage is full.");
     setTimeout(() => setToastMessage(''), 3000);
   };
 
@@ -374,9 +390,9 @@ export default function CategoriesView() {
   const filteredBanners = categoryBanners.filter((b) => {
     const q = bannerSearch.toLowerCase();
     const matchSearch =
-      b.title.toLowerCase().includes(q) ||
-      b.slug.toLowerCase().includes(q) ||
-      b.badge.toLowerCase().includes(q) ||
+      (b.title || '').toLowerCase().includes(q) ||
+      (b.slug || '').toLowerCase().includes(q) ||
+      (b.badge || '').toLowerCase().includes(q) ||
       (b.categoryName && b.categoryName.toLowerCase().includes(q));
 
     if (!matchSearch) return false;
@@ -395,7 +411,7 @@ export default function CategoriesView() {
 
   const columns = [
     {
-      header: 'Category Name',
+      header: 'Category',
       accessor: 'name',
       sortable: true,
       render: (val, row) => (
@@ -428,11 +444,11 @@ export default function CategoriesView() {
       render: (val) => <span className="text-zinc-500 text-xs truncate max-w-xs block">{val || '—'}</span>,
     },
     {
-      header: 'Storefront Hero Banner',
+      header: 'Banner',
       accessor: 'slug',
       align: 'center',
       render: (slug, row) => {
-        const matchingBanner = categoryBanners.find((b) => b.slug.toLowerCase() === (slug || '').toLowerCase());
+        const matchingBanner = categoryBanners.find((b) => (b.slug || '').toLowerCase() === (slug || '').toLowerCase());
         return (
           <div className="flex items-center justify-center gap-2">
             <button
@@ -451,10 +467,10 @@ export default function CategoriesView() {
                 }
               }}
               className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-[11px] font-semibold rounded-md border border-zinc-200 transition-colors flex items-center gap-1.5 cursor-pointer"
-              title="Customize Full-Bleed Storefront Hero Banner"
+              title="Change the banner picture and text"
             >
               <ImageIcon className="w-3 h-3 text-emerald-600" />
-              <span>{matchingBanner ? 'Edit Banner' : '+ Add Banner'}</span>
+              <span>{matchingBanner ? 'Edit banner' : '+ Add banner'}</span>
             </button>
           </div>
         );
@@ -472,7 +488,7 @@ export default function CategoriesView() {
       ),
     },
     {
-      header: 'Display Order',
+      header: 'Order on site',
       accessor: 'displayOrder',
       sortable: true,
       align: 'center',
@@ -506,7 +522,7 @@ export default function CategoriesView() {
       render: (val) => <StatusBadge status={val} size="sm" />,
     },
     {
-      header: 'Actions',
+      header: '',
       accessor: 'id',
       align: 'right',
       render: (_, row) => (
@@ -533,8 +549,12 @@ export default function CategoriesView() {
   return (
     <div className="space-y-6 font-['Plus_Jakarta_Sans',sans-serif]">
       {toastMessage && (
-        <div className="fixed top-16 right-6 z-[100] bg-zinc-900 text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2.5 font-medium text-xs animate-in fade-in slide-in-from-top-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+        <div
+          className={`!m-0 fixed top-20 right-6 z-[100] max-w-md text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2.5 font-medium text-sm ${
+            /not saved|offline/i.test(toastMessage) ? 'bg-rose-700' : 'bg-zinc-900'
+          }`}
+        >
+          {!/not saved|offline/i.test(toastMessage) && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
           <span>{toastMessage}</span>
         </div>
       )}
@@ -542,13 +562,7 @@ export default function CategoriesView() {
       {/* Main Header & Dual Tab Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-zinc-200">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-zinc-950 tracking-tight flex items-center gap-2.5">
-            <FolderTree className="w-6 h-6 text-zinc-700" />
-            <span>Category Tree & Storefront Banners</span>
-          </h1>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            Manage category structures, menu order, and access/change all full-bleed storefront hero banners across the site.
-          </p>
+          <p className="text-base text-zinc-500">The groups your products are sorted into, and the big banner picture at the top of each one.</p>
         </div>
 
         {/* View Switcher Tabs */}
@@ -562,7 +576,7 @@ export default function CategoriesView() {
             }`}
           >
             <FolderTree className="w-3.5 h-3.5" />
-            <span>Category Tree</span>
+            <span>Categories</span>
             <span className="px-1.5 py-0.2 bg-zinc-200/80 text-zinc-800 rounded-full text-[10px]">
               {categories.length}
             </span>
@@ -577,7 +591,7 @@ export default function CategoriesView() {
             }`}
           >
             <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
-            <span>Storefront Banners</span>
+            <span>Banners</span>
             <span className="px-1.5 py-0.2 bg-blue-100 text-blue-700 rounded-full text-[10px] font-bold">
               {categoryBanners.length} Banners
             </span>
@@ -592,14 +606,14 @@ export default function CategoriesView() {
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-xs text-zinc-500 font-medium">
-              Products are sorted into parent categories. Each category automatically drives its own storefront hero header.
+              Click "Edit banner" to change the picture at the top of a category page. Use the arrows to change the order.
             </p>
             <button
               onClick={handleOpenAdd}
               className="px-3.5 py-2 bg-zinc-950 hover:bg-black text-white font-semibold text-xs rounded-lg transition flex items-center gap-2 cursor-pointer shadow-xs"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>+ Add New Category</span>
+              <span>Add a category</span>
             </button>
           </div>
 
@@ -624,13 +638,13 @@ export default function CategoriesView() {
           <div className="bg-white border border-zinc-200 rounded-xl p-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold text-zinc-700 uppercase tracking-wider mr-1">
-                Filter Banners:
+                Show:
               </span>
               {[
                 { id: 'all', label: 'All Banners' },
-                { id: 'sports', label: 'Sports Disciplines' },
-                { id: 'gender', label: 'Gender Collections' },
-                { id: 'vault', label: 'Vault & Catalog' },
+                { id: 'sports', label: 'Sports' },
+                { id: 'gender', label: 'Men / Women / Kids' },
+                { id: 'vault', label: 'Other pages' },
               ].map((pill) => (
                 <button
                   key={pill.id}
@@ -663,7 +677,7 @@ export default function CategoriesView() {
                 className="px-3.5 py-1.5 bg-zinc-950 hover:bg-black text-white font-semibold text-xs rounded-lg transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ Add New Banner</span>
+                <span>Add a banner</span>
               </button>
             </div>
           </div>
@@ -713,7 +727,7 @@ export default function CategoriesView() {
                 <div className="p-4 space-y-3 bg-white">
                   <div>
                     <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block mb-1.5">
-                      Quick Select Photo Preset:
+                      Quick pick:
                     </span>
                     <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                       {BANNER_IMAGE_PRESETS.slice(0, 6).map((imgPreset) => (
@@ -758,7 +772,7 @@ export default function CategoriesView() {
                         className="px-3 py-1.5 bg-zinc-900 hover:bg-black text-white font-semibold text-xs rounded-lg transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
                       >
                         <Edit className="w-3 h-3" />
-                        <span>Edit Banner</span>
+                        <span>Edit banner</span>
                       </button>
                     </div>
                   </div>
@@ -775,14 +789,14 @@ export default function CategoriesView() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingCategory ? `Edit Category: ${editingCategory.name}` : 'Add New Category'}
-        subtitle="Specify category catalog hierarchy and configure its storefront hero banner."
+        title={editingCategory ? `Edit category: ${editingCategory.name}` : 'Add a category'}
+        subtitle="Give it a name and a banner picture for the top of its page."
         maxWidth="max-w-2xl"
       >
         <form onSubmit={handleSubmit} className="space-y-4 font-['Plus_Jakarta_Sans',sans-serif]">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <TextInput
-              label="Category Name"
+              label="Category name"
               value={formData.name}
               onChange={(e) => {
                 const name = e.target.value;
@@ -798,7 +812,7 @@ export default function CategoriesView() {
             />
 
             <TextInput
-              label="URL Slug"
+              label="Web address"
               value={formData.slug}
               onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
               placeholder="basketball"
@@ -807,7 +821,7 @@ export default function CategoriesView() {
           </div>
 
           <TextareaInput
-            label="Category Summary & Description"
+            label="Short description"
             value={formData.description}
             onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
             placeholder="High performance athletic category for tournament and training gear..."
@@ -819,23 +833,23 @@ export default function CategoriesView() {
             <div className="flex items-center justify-between border-b border-zinc-200/80 pb-2">
               <span className="text-xs font-bold text-zinc-900 uppercase tracking-wider flex items-center gap-2">
                 <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
-                <span>Storefront Hero Banner Setup</span>
+                <span>Banner at the top of the page</span>
               </span>
               <span className="text-[10px] text-zinc-500 font-semibold">
-                Appears full-bleed at top of /{formData.slug || 'category'}
+                yoursite/#{formData.slug || 'category'}
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <TextInput
-                label="Banner Title"
+                label="Banner heading"
                 value={formData.bannerTitle}
                 onChange={(e) => setFormData((prev) => ({ ...prev, bannerTitle: e.target.value }))}
                 placeholder="e.g. SKATING ANGELS RINK"
               />
 
               <TextInput
-                label="Badge Chip Text"
+                label="Small label above the heading"
                 value={formData.bannerBadge}
                 onChange={(e) => setFormData((prev) => ({ ...prev, bannerBadge: e.target.value }))}
                 placeholder="e.g. PRECISION GLIDE & RINK GEAR"
@@ -843,16 +857,18 @@ export default function CategoriesView() {
             </div>
 
             <ImageUploader
-              label="Storefront Banner Cover Photo"
-              hint="Upload your custom picture (PNG, JPG, WEBP) from your computer or paste a URL"
+              label="Banner picture"
+              hint="Choose a picture from your computer"
               aspectRatio="aspect-[21/9]"
+              cropShape="banner"
+              cropShapes={['banner', 'wide', 'original']}
               value={formData.image}
               onChange={(url) => setFormData((prev) => ({ ...prev, image: url }))}
             />
 
             <div>
               <span className="text-[10px] font-semibold text-zinc-600 uppercase tracking-wider block mb-1">
-                Quick Select Photo:
+                Or pick one:
               </span>
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                 {BANNER_IMAGE_PRESETS.map((preset) => (
@@ -874,7 +890,7 @@ export default function CategoriesView() {
           </div>
 
           <SelectInput
-            label="Publishing Status"
+            label="Show on website?"
             value={formData.status}
             onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
             options={[
@@ -907,8 +923,8 @@ export default function CategoriesView() {
       <Modal
         isOpen={isBannerModalOpen}
         onClose={() => setIsBannerModalOpen(false)}
-        title={editingBanner ? `Edit Banner: ${bannerFormData.title}` : 'Add New Storefront Hero Banner'}
-        subtitle="Change banner cover photos, titles, badges, and athletic color tones in real time."
+        title={editingBanner ? `Edit banner: ${bannerFormData.title}` : 'Add a banner'}
+        subtitle="Changes show on the website straight away."
         maxWidth="max-w-3xl"
       >
         <form onSubmit={handleSaveBanner} className="space-y-4 font-['Plus_Jakarta_Sans',sans-serif]">
@@ -946,7 +962,7 @@ export default function CategoriesView() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <TextInput
-              label="Target Page / Category Slug"
+              label="Page (web address)"
               value={bannerFormData.slug}
               onChange={(e) => setBannerFormData((prev) => ({ ...prev, slug: e.target.value.toLowerCase() }))}
               placeholder="e.g. skating, running, basketball"
@@ -954,7 +970,7 @@ export default function CategoriesView() {
             />
 
             <TextInput
-              label="Category / Collection Label"
+              label="Category name"
               value={bannerFormData.categoryName}
               onChange={(e) => setBannerFormData((prev) => ({ ...prev, categoryName: e.target.value }))}
               placeholder="e.g. Inline Skating"
@@ -963,7 +979,7 @@ export default function CategoriesView() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <TextInput
-              label="Banner Headline Title"
+              label="Banner heading"
               value={bannerFormData.title}
               onChange={(e) => setBannerFormData((prev) => ({ ...prev, title: e.target.value }))}
               placeholder="e.g. SKATING ANGELS RINK"
@@ -971,7 +987,7 @@ export default function CategoriesView() {
             />
 
             <TextInput
-              label="Badge Tag Text"
+              label="Small label above the heading"
               value={bannerFormData.badge}
               onChange={(e) => setBannerFormData((prev) => ({ ...prev, badge: e.target.value.toUpperCase() }))}
               placeholder="e.g. PRECISION GLIDE & RINK GEAR"
@@ -980,7 +996,7 @@ export default function CategoriesView() {
           </div>
 
           <TextareaInput
-            label="Banner Subtitle / Description"
+            label="Text under the heading"
             value={bannerFormData.subtitle}
             onChange={(e) => setBannerFormData((prev) => ({ ...prev, subtitle: e.target.value }))}
             placeholder="Inline quad skates, protective armor padding kits & precision bearings."
@@ -992,24 +1008,26 @@ export default function CategoriesView() {
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-zinc-900 uppercase tracking-wider flex items-center gap-2">
                 <ImageIcon className="w-3.5 h-3.5 text-blue-600" />
-                <span>Banner Cover Picture</span>
+                <span>Banner picture</span>
               </label>
               <span className="text-[10px] text-zinc-500 font-medium">
-                Add your own picture from device or select a preset
+                Upload your own or pick one below
               </span>
             </div>
 
             <ImageUploader
               label=""
-              hint="Upload your own picture (PNG, JPG, WEBP, SVG) from your computer or drag & drop"
+              hint="Choose a picture from your computer or drag it here"
               aspectRatio="aspect-[21/9]"
+              cropShape="banner"
+              cropShapes={['banner', 'wide', 'original']}
               value={bannerFormData.image}
               onChange={(url) => setBannerFormData((prev) => ({ ...prev, image: url }))}
             />
 
             <div>
               <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-wider block mb-1">
-                Or Quick Select Photo Preset:
+                Or pick one:
               </span>
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                 {BANNER_IMAGE_PRESETS.map((preset) => (

@@ -29,37 +29,49 @@ import {
   MessageSquare,
   Bot
 } from 'lucide-react';
-import SkateTrialChatbot from './SkateTrialChatbot';
 import { publicApi } from '../services/api';
+import { TRIAL_PAYMENT_LINK, buildTrialPaymentUrl, TEAM_WHATSAPP_NUMBER } from '../config/payments';
+import { saveTrialLead, updateTrialLead } from '../utils/trialLeadsData';
+
+// The booking is kept here while the visitor is on the payment page, so the thank-you page can show their pass.
+const PENDING_BOOKING_KEY = 'strategy_pending_trial_booking';
 import { format10DigitPhone, validate10DigitPhone, validateGmail } from '../utils/validation';
 
-export default function FreeTrialPage({ navigateTo }) {
-  const [vipPerk, setVipPerk] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [ticketData, setTicketData] = useState(null);
-  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+// WhatsApp link with the booking details already typed in, so the visitor only taps Send
+function trialWhatsAppLink(t) {
+  const lines = [
+    'Hi STRATEGY team! 👋 I just booked a skating trial class.',
+    t.name && `Name: ${t.name}`,
+    (t.date || t.timeSlot) && `Date: ${[t.date, t.timeSlot].filter(Boolean).join(' · ')}`,
+    (t.location || t.rink) && `Location: ${t.location || t.rink}`,
+    t.ageGroup && `Age group: ${t.ageGroup}`,
+    `Payment: ${t.paidOnline || !t.id ? '30 AED paid online' : t.paymentInfo || '30 AED'}`,
+    t.id && `Booking no: ${t.id}`,
+    '',
+    'I would like to know more about:',
+  ].filter((l) => l !== false && l !== undefined && l !== null);
+  return `https://wa.me/${TEAM_WHATSAPP_NUMBER}?text=${encodeURIComponent(lines.join('\n'))}`;
+}
 
-  const handleBotConfirmBooking = (botBooking) => {
-    const ticketId = 'APX-' + Math.floor(100000 + Math.random() * 900000);
-    const pass = {
-      id: ticketId,
-      name: botBooking.childName || 'Registered Skater',
-      email: 'client@gmail.com',
-      phone: '+971 50 123 4567',
-      ageGroup: botBooking.age || 'Ages 8-15',
-      skateStyle: 'Pro Inline & Quad Skates',
-      skateSize: botBooking.shoeSize || 'EU 38 (UK 5 / US 6)',
-      price: '30.00 AED',
-      date: `${botBooking.day || 'Saturday'}, October 2026`,
-      timeSlot: botBooking.time || '10:00 AM',
-      time: `${botBooking.time || '10:00 AM'} (45-Min Session)`,
-      coach: 'Coach Leo • Certified World Skate Coach',
-      rink: `${botBooking.location || 'Dubai Marina Rink'} Floor 1`,
-      paymentMethod: 'Trial Fee On-Rink (AED 30)',
-      paymentInfo: 'Cash / Card at check-in desk'
-    };
-    setTicketData(pass);
-  };
+function readPendingBooking() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PENDING_BOOKING_KEY) || 'null');
+    return saved?.pass ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+export default function FreeTrialPage({ navigateTo, paymentReturn = false }) {
+  // On the thank-you page: the booking saved just before going to the payment page (if any)
+  const [returnBooking] = useState(() => (paymentReturn ? readPendingBooking() : null));
+  // Paid on another device/browser, or the page was opened again later: still say thank you
+  const returnedWithoutBooking = paymentReturn && !returnBooking;
+
+  const [vipPerk, setVipPerk] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(() => !!returnBooking);
+  const [ticketData, setTicketData] = useState(() => (returnBooking ? { ...returnBooking.pass, paidOnline: true } : null));
+
 
   // Location schedule configurations
   const LOCATION_CONFIGS = {
@@ -127,20 +139,23 @@ export default function FreeTrialPage({ navigateTo }) {
   const [skateSize, setSkateSize] = useState('EU 38 (UK 5 / US 6)');
   const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
 
-  // Step 3: Payment
-  const [paymentMethod, setPaymentMethod] = useState('card'); // 'card' | 'bank'
-  const [cardHolder, setCardHolder] = useState('');
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvv, setCardCvv] = useState('');
-  const [cardError, setCardError] = useState('');
-
-  const [bankSenderName, setBankSenderName] = useState('');
-  const [bankSenderBank, setBankSenderBank] = useState('');
-  const [bankTxRef, setBankTxRef] = useState('');
-  const [bankError, setBankError] = useState('');
-
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
+
+  // Back from the payment page (/thank-you): mark the booking as paid and forget the saved copy.
+  // (Reading the booking happens once, below the component's first lines, so it's safe to run twice.)
+  useEffect(() => {
+    if (!paymentReturn) return;
+    if (returnBooking?.leadId) {
+      updateTrialLead(returnBooking.leadId, { paymentStatus: 'paid', paidAt: new Date().toISOString() });
+    }
+    try {
+      localStorage.removeItem(PENDING_BOOKING_KEY);
+    } catch {
+      // ignore
+    }
+    window.scrollTo({ top: 0 });
+  }, [paymentReturn, returnBooking]);
 
   const months = ['October 2026', 'November 2026'];
   const skateSizesList = [
@@ -226,8 +241,7 @@ export default function FreeTrialPage({ navigateTo }) {
   const handleOpenBooking = () => {
     setEmailError('');
     setPhoneError('');
-    setCardError('');
-    setBankError('');
+    setPaymentError('');
 
     // If client does not have skates, ensure Al Nahyan is default
     if (hasOwnSkates === 'no') {
@@ -317,83 +331,91 @@ export default function FreeTrialPage({ navigateTo }) {
     setBookingStep(2);
   };
 
-  const handleNextToPayment = (e) => {
-    if (e) e.preventDefault();
-    setBookingStep(3);
+  // Builds the visitor's trial pass from what they filled in
+  const buildPass = () => {
+    const nameToUse = candidateName.trim();
+    const emailToUse = clientEmail.trim();
+    let phoneToUse = clientPhone.trim();
+    if (phoneToUse && !phoneToUse.startsWith('+971')) phoneToUse = `+971 ${phoneToUse}`;
+    const activeLoc = LOCATION_CONFIGS[selectedLocation] || LOCATION_CONFIGS['Al Nahyan'];
+    const dateObj = new Date(2026, currentMonthIndex === 0 ? 9 : 10, selectedDay);
+    const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+    return {
+      id: 'APX-' + Math.floor(100000 + Math.random() * 900000),
+      name: nameToUse,
+      email: emailToUse,
+      phone: phoneToUse,
+      ageGroup,
+      skateStyle: 'Inline Speed Skates',
+      skateSize: hasOwnSkates === 'yes' ? `${skateSize} (Own Skates Brought)` : `${skateSize} (Rental Skates)`,
+      hasExperience: hasSkatingExperience === 'yes' ? 'Yes (Has Skating Experience)' : 'No (First Timer)',
+      hasSkates: hasOwnSkates === 'yes' ? 'Yes (Own Skates)' : 'No (Rental Skates Provided)',
+      price: '30.00 AED',
+      location: activeLoc.name,
+      dayName,
+      date: `${dayName}, ${months[currentMonthIndex].split(' ')[0]} ${selectedDay}, 2026`,
+      timeSlot: selectedTimeSlot,
+      time: `${selectedTimeSlot} (45-Min Session)`,
+      coach: 'Certified World Skate Coach',
+      rink: `${activeLoc.name} Arena • ${activeLoc.rink}`,
+      paymentMethod: 'Paid online',
+      paymentInfo: 'Paid online • 30.00 AED',
+    };
   };
 
-  const handleFinalPayment = (e) => {
+  // "Proceed to payment": save the booking, then send the visitor to the payment link.
+  const handleNextToPayment = async (e) => {
     if (e) e.preventDefault();
+    setPaymentError('');
 
-    if (paymentMethod === 'card') {
-      if (!cardHolder.trim() || !cardNumber.trim() || !cardExpiry.trim() || !cardCvv.trim()) {
-        setCardError('Please fill in all card details to complete payment');
-        return;
-      }
-      setCardError('');
-    } else {
-      setBankError('');
+    if (!candidateName.trim()) {
+      setPaymentError("Please enter the skater's name.");
+      return;
+    }
+    if (!TRIAL_PAYMENT_LINK) {
+      setPaymentError('Online payment is not set up yet. Please contact us on WhatsApp to book your trial.');
+      return;
     }
 
     setIsProcessing(true);
+    const pass = buildPass();
 
-    setTimeout(async () => {
-      const nameToUse = candidateName.trim() || 'Registered Skater';
-      const emailToUse = clientEmail.trim() || 'skater@gmail.com';
-      let phoneToUse = clientPhone.trim();
-      if (phoneToUse && !phoneToUse.startsWith('+971')) {
-        phoneToUse = `+971 ${phoneToUse}`;
-      } else if (!phoneToUse) {
-        phoneToUse = '+971 50 123 4567';
-      }
+    // Save it for the admin's "Trial requests" (marked as payment not finished until they come back)
+    const lead = saveTrialLead('skating', {
+      name: pass.name,
+      email: pass.email,
+      phone: clientPhone.trim(),
+      ageGroup,
+      programType: 'Skating trial class (30 AED)',
+      experience: hasSkatingExperience === 'yes' ? 'Has skated before' : 'First timer',
+      timeSlot: `${pass.date} · ${pass.timeSlot}`,
+      location: pass.location,
+      skateSize,
+      needsEquipment: hasOwnSkates !== 'yes',
+      ticketId: pass.id,
+      paymentStatus: 'pending',
+    });
 
-      const ticketId = 'APX-' + Math.floor(100000 + Math.random() * 900000);
-      const activeLoc = LOCATION_CONFIGS[selectedLocation] || LOCATION_CONFIGS['Al Nahyan'];
-      const dateObj = new Date(2026, currentMonthIndex === 0 ? 9 : 10, selectedDay);
-      const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+    try {
+      localStorage.setItem(PENDING_BOOKING_KEY, JSON.stringify({ pass, leadId: lead?.id, createdAt: Date.now() }));
+    } catch {
+      // storage unavailable: the thank-you page will show a general message instead
+    }
 
-      try {
-        await publicApi.submitEnquiry({
-          participantName: nameToUse,
-          customerEmail: emailToUse,
-          customerPhone: phoneToUse,
-          programTitle: 'Inline & Quad Skating Trial Academy',
-          preferredDay: dayName,
-          preferredTime: selectedTimeSlot,
-        });
-      } catch (err) {
-        console.warn('Backend enquiry submission fallback:', err.message);
-      }
+    try {
+      await publicApi.submitEnquiry({
+        participantName: pass.name,
+        customerEmail: pass.email,
+        customerPhone: pass.phone,
+        programTitle: 'Inline & Quad Skating Trial Academy',
+        preferredDay: pass.dayName,
+        preferredTime: pass.timeSlot,
+      });
+    } catch {
+      // booking server offline: the payment and the saved booking are what matter
+    }
 
-      const pass = {
-        id: ticketId,
-        name: nameToUse,
-        email: emailToUse,
-        phone: phoneToUse,
-        ageGroup,
-        skateStyle: 'Inline Speed Skates',
-        skateSize: hasOwnSkates === 'yes' ? `${skateSize} (Own Skates Brought)` : `${skateSize} (Rental Skates)`,
-        hasExperience: hasSkatingExperience === 'yes' ? 'Yes (Has Skating Experience)' : 'No (First Timer)',
-        hasSkates: hasOwnSkates === 'yes' ? 'Yes (Own Skates)' : 'No (Rental Skates Provided)',
-        price: '30.00 AED',
-        location: activeLoc.name,
-        date: `${dayName}, ${months[currentMonthIndex].split(' ')[0]} ${selectedDay}, 2026`,
-        timeSlot: selectedTimeSlot,
-        time: `${selectedTimeSlot} (45-Min Session)`,
-        coach: 'Certified World Skate Coach',
-        rink: `${activeLoc.name} Arena • ${activeLoc.rink}`,
-        paymentMethod: paymentMethod === 'card' ? 'Credit / Debit Card' : 'UAE Direct Bank Transfer',
-        paymentInfo: paymentMethod === 'card' 
-          ? `Card •••• ${cardNumber.replace(/\s/g, '').slice(-4) || '4242'}`
-          : 'UAE Direct Bank Transfer (Emirates NBD)'
-      };
-
-      setTicketData(pass);
-      setIsProcessing(false);
-      setBookingStep(null);
-      setIsSubmitted(true);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 600);
+    window.location.href = buildTrialPaymentUrl(TRIAL_PAYMENT_LINK, { bookingId: pass.id, email: pass.email });
   };
 
   return (
@@ -444,134 +466,93 @@ export default function FreeTrialPage({ navigateTo }) {
         {/* =========================================================================
            VIEW: TICKET PASS CONFIRMATION (When submitted)
            ========================================================================= */}
-        {isSubmitted && ticketData ? (
-          <div className="max-w-xl mx-auto w-full space-y-6 animate-fadeIn py-4">
-            
-            {/* Success Celebration Header */}
-            <div className="text-center space-y-2 pt-2">
-              <div className="inline-flex p-3.5 rounded-full bg-blue-50 text-blue-600 mb-1 border border-blue-200">
-                <CheckCircle2 className="w-10 h-10" />
+        {returnedWithoutBooking ? (
+          <div className="max-w-xl mx-auto w-full py-10 text-center space-y-4 animate-fadeIn" id="trial-thank-you-generic">
+            <div className="inline-flex p-3.5 rounded-full bg-blue-50 text-blue-600 border border-blue-200">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+            <h2 className="text-2xl md:text-3xl font-extrabold font-['Outfit'] text-gray-900">THANK YOU!</h2>
+            <p className="text-base text-gray-600">We&apos;re excited to see you on the court.</p>
+            <p className="text-sm text-gray-600 max-w-md mx-auto">
+              Your payment for the skating trial class was received. Message our team on WhatsApp to confirm your date and time.
+            </p>
+            <a
+              href={trialWhatsAppLink({})}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl bg-[#25D366] hover:bg-[#1ebe5b] text-white font-bold text-sm shadow-sm"
+            >
+              <MessageSquare className="w-5 h-5" />
+              Chat with our team on WhatsApp
+            </a>
+            <button
+              onClick={() => {
+                navigateTo('home');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="py-3.5 px-6 rounded-xl bg-slate-800 hover:bg-slate-900 font-bold text-sm text-white"
+            >
+              Return to Home
+            </button>
+          </div>
+        ) : isSubmitted && ticketData ? (
+          <div className="max-w-md mx-auto w-full py-8 animate-fadeIn" id="trial-thank-you">
+            <div className="bg-white rounded-3xl ring-1 ring-slate-200 shadow-sm p-6 sm:p-8 text-center">
+              <div className="w-16 h-16 mx-auto rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600">
+                <CheckCircle2 className="w-9 h-9" />
               </div>
-              <h2 className="text-2xl md:text-3xl font-extrabold font-['Outfit'] text-gray-900">
-                TRIAL SESSION PASS CONFIRMED!
+
+              <h2 className="mt-4 text-2xl sm:text-3xl font-extrabold font-['Outfit'] text-gray-900">
+                Thank you{ticketData.name ? `, ${ticketData.name.split(' ')[0]}` : ''}!
               </h2>
-              <p className="text-sm text-gray-600">
-                Your 45-minute trial pass (30 AED) is active for <strong>{ticketData.name}</strong>. Skates and full protective armor will be sanitized and waiting at rink check-in.
-              </p>
-            </div>
+              <p className="mt-1 text-base text-gray-600">We&apos;re excited to see you on the court.</p>
 
-            {/* Visual Digital Ticket / Scanner Card */}
-            <div className="trial-card" style={{ border: '2px solid #2563eb', background: '#ffffff' }}>
-              
-              {/* Ticket Top Ribbon */}
-              <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-                <div>
-                  <span className="trial-badge-blue">
-                    OFFICIAL 30 AED PASS
-                  </span>
-                  <div className="text-xl font-extrabold font-['Outfit'] text-gray-900 mt-2">
-                    {ticketData.name}
-                  </div>
-                  <div className="text-xs text-gray-500">{ticketData.email} • {ticketData.phone}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[11px] text-gray-400">Pass Number</div>
-                  <div className="font-mono font-bold text-sm text-blue-600">{ticketData.id}</div>
-                </div>
-              </div>
+              <blockquote className="mt-5 px-4 py-3 rounded-2xl bg-blue-50/70 text-blue-900 text-sm italic">
+                &ldquo;Every champion was once a beginner who refused to give up.&rdquo;
+              </blockquote>
 
-              {/* Pass Details Grid */}
-              <div className="grid grid-cols-2 gap-3 text-xs mb-5">
-                <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-100">
-                  <div className="text-gray-500 mb-1 flex items-center gap-1 text-[11px]">
-                    <CalendarIcon className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Selected Date & Time</span>
-                  </div>
-                  <div className="font-extrabold text-blue-700 text-sm">{ticketData.date}</div>
-                  <div className="font-bold text-blue-600 text-xs mt-0.5">{ticketData.timeSlot}</div>
-                </div>
+              {/* Booking summary */}
+              <dl className="mt-6 text-left text-sm ring-1 ring-slate-200 rounded-2xl divide-y divide-slate-100">
+                {[
+                  ['Date', [ticketData.date, ticketData.timeSlot].filter(Boolean).join(' · ')],
+                  ['Payment', ticketData.paidOnline ? '30 AED · Paid' : ticketData.paymentInfo || '30 AED'],
+                  ['Age', ticketData.ageGroup],
+                  ['Location', ticketData.location || ticketData.rink],
+                ]
+                  .filter(([, v]) => v)
+                  .map(([label, value]) => (
+                    <div key={label} className="flex items-start justify-between gap-4 px-4 py-3">
+                      <dt className="text-gray-500">{label}</dt>
+                      <dd className="font-bold text-gray-900 text-right">{value}</dd>
+                    </div>
+                  ))}
+              </dl>
 
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="text-gray-500 mb-1 flex items-center gap-1 text-[11px]">
-                    <Clock className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Fee Paid • Status</span>
-                  </div>
-                  <div className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
-                    <span>30.00 AED</span>
-                    <span className="text-[10px] font-extrabold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200">PAID ✓</span>
-                  </div>
-                  <div className="text-[11px] text-gray-500 font-medium mt-0.5">{ticketData.paymentInfo || ticketData.paymentMethod}</div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="text-gray-500 mb-1 flex items-center gap-1 text-[11px]">
-                    <Award className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Age Group</span>
-                  </div>
-                  <div className="font-bold text-gray-900 text-sm">{ticketData.ageGroup}</div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                  <div className="text-gray-500 mb-1 flex items-center gap-1 text-[11px]">
-                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Skate Style & Size</span>
-                  </div>
-                  <div className="font-bold text-gray-900 text-sm">{ticketData.skateSize}</div>
-                </div>
-              </div>
-
-              {/* Rink Address */}
-              <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-100 flex items-start gap-2.5 text-xs text-slate-700 mb-5">
-                <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <div>
-                  <div className="font-bold text-gray-900">{ticketData.rink}</div>
-                  <div className="text-[11px] text-gray-600">Please arrive 15 minutes before the session for personalized check-in and fitting.</div>
-                </div>
-              </div>
-
-              {/* QR Code Barcode Area */}
-              <div className="border-t border-dashed border-gray-200 pt-5 flex flex-col items-center justify-center text-center">
-                <div className="bg-white p-3 rounded-2xl border border-blue-200 shadow-sm mb-2">
-                  <QrCode className="w-28 h-28 text-blue-900" />
-                </div>
-                <div className="text-[11px] text-gray-500 font-mono tracking-widest uppercase">
-                  Scan at Rink Gate Front Desk
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-2.5">
-              <button
-                onClick={() => window.print()}
-                className="flex-1 py-3.5 px-3 rounded-xl bg-white hover:bg-gray-50 border border-gray-300 font-bold text-xs text-gray-800 flex items-center justify-center gap-1.5 shadow-sm"
+              {/* WhatsApp: message already written, the visitor only taps Send */}
+              <a
+                id="trial-whatsapp-team"
+                href={trialWhatsAppLink(ticketData)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-xl bg-[#25D366] hover:bg-[#1ebe5b] text-white font-bold text-sm shadow-sm"
               >
-                <Printer className="w-4 h-4 text-gray-600" />
-                <span>Print Pass</span>
-              </button>
+                <MessageSquare className="w-5 h-5" />
+                Chat with our team on WhatsApp
+              </a>
+              <p className="mt-2 text-xs text-gray-500">
+                Want to know more about anything? Your booking details are already in the message, just tap Send.
+              </p>
 
               <button
                 onClick={() => {
                   navigateTo('home');
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className="flex-1 py-3.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 font-bold text-xs text-white flex items-center justify-center gap-1.5 shadow-sm"
+                className="mt-5 text-sm font-semibold text-slate-600 hover:text-slate-900 underline underline-offset-2"
               >
-                <span>Return to Home</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  navigateTo('programs');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="flex-1 trial-btn-primary py-3.5 px-3 text-xs"
-              >
-                <span>Explore Courses</span>
-                <ChevronRight className="w-4 h-4" />
+                Back to home
               </button>
             </div>
-
           </div>
         ) : (
           /* =========================================================================
@@ -831,17 +812,55 @@ export default function FreeTrialPage({ navigateTo }) {
               <div className="flex items-center gap-2">
                 {bookingStep === 0 ? (
                   <>
-                    <span className="booking-step-pill">
-                      Question {preCheckStep} of 2
-                    </span>
-                    <span className="font-extrabold text-sm font-['Outfit'] text-gray-900">
-                      {preCheckStep === 1 ? 'Skater Experience' : 'Skates & Equipment'}
+                    <style>{`
+                      .pq-steps { display: flex; gap: 4px; }
+                      .pq-steps span { width: 22px; height: 5px; border-radius: 9999px; background: #e2e8f0; transition: background .3s ease; }
+                      .pq-steps span.on { background: #2563eb; }
+                      .pq-head-label { font-size: 13px; font-weight: 600; color: #64748b; }
+                      .pq-head-label b { color: #0f172a; font-weight: 800; font-family: 'Outfit', sans-serif; }
+                      .pq-body { text-align: center; padding: 6px 0 2px; }
+                      .pq-icon { width: 56px; height: 56px; margin: 4px auto 14px; border-radius: 18px; display: flex; align-items: center; justify-content: center; color: #fff;
+                        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); box-shadow: 0 12px 26px -10px rgba(37, 99, 235, .7); }
+                      .pq-eyebrow { font-size: 11px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: #2563eb; }
+                      .pq-title { margin: 6px auto 8px; max-width: 360px; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: clamp(20px, 5vw, 24px); line-height: 1.2; color: #0f172a; }
+                      .pq-sub { margin: 0 auto 22px; max-width: 340px; font-size: 13.5px; line-height: 1.55; color: #64748b; }
+                      .pq-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+                      .pq-option { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 22px 10px 18px; border-radius: 18px;
+                        background: #fff; box-shadow: inset 0 0 0 1.5px #e2e8f0, 0 1px 2px rgba(15, 23, 42, .05); cursor: pointer;
+                        transition: transform .18s ease, box-shadow .2s ease, background .2s ease, opacity .2s ease; }
+                      @media (hover: hover) { .pq-option:hover:not(:disabled) { transform: translateY(-3px); box-shadow: inset 0 0 0 2px #2563eb, 0 16px 30px -16px rgba(37, 99, 235, .6); } .pq-option:hover:not(:disabled) .pq-emoji { transform: scale(1.08) rotate(-6deg); background: #dbeafe; } }
+                      .pq-option:active:not(:disabled) { transform: scale(.97); }
+                      .pq-option:focus-visible { outline: 3px solid rgba(37, 99, 235, .35); outline-offset: 2px; }
+                      .pq-option.on { background: #eff6ff; box-shadow: inset 0 0 0 2px #2563eb, 0 16px 30px -16px rgba(37, 99, 235, .6); }
+                      .pq-options.busy .pq-option:not(.on) { opacity: .45; }
+                      .pq-option:disabled { cursor: default; }
+                      .pq-emoji { width: 58px; height: 58px; margin-bottom: 8px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+                        font-size: 28px; background: #f1f5f9; transition: transform .25s ease, background .25s ease; }
+                      .pq-option.on .pq-emoji { transform: scale(1.08) rotate(-6deg); background: #dbeafe; }
+                      .pq-label { font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 20px; color: #0f172a; line-height: 1.1; }
+                      .pq-option.on .pq-label { color: #1d4ed8; }
+                      .pq-hint { font-size: 12px; font-weight: 600; color: #64748b; }
+                      .pq-radio { position: absolute; top: 10px; right: 10px; width: 20px; height: 20px; border-radius: 50%; box-shadow: inset 0 0 0 2px #cbd5e1;
+                        display: flex; align-items: center; justify-content: center; color: #fff; transition: all .2s ease; }
+                      .pq-option.on .pq-radio { background: #2563eb; box-shadow: none; }
+                      .pq-foot { margin-top: 18px; min-height: 34px; display: flex; align-items: center; justify-content: center; }
+                      .pq-note { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #94a3b8; }
+                      .pq-saving { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; color: #2563eb; }
+                      .pq-back { display: inline-flex; align-items: center; gap: 4px; padding: 7px 12px; border-radius: 10px; font-size: 12.5px; font-weight: 700; color: #475569; cursor: pointer; transition: all .2s ease; }
+                      .pq-back:hover { background: #f1f5f9; color: #1d4ed8; }
+                    `}</style>
+                    <div className="pq-steps" aria-hidden="true">
+                      <span className="on" />
+                      <span className={preCheckStep >= 2 ? 'on' : ''} />
+                    </div>
+                    <span className="pq-head-label">
+                      Step {preCheckStep} of 2 · <b>{preCheckStep === 1 ? 'Skating experience' : 'Skates & equipment'}</b>
                     </span>
                   </>
                 ) : (
                   <>
                     <span className="booking-step-pill">
-                      Step {bookingStep} of 3
+                      Step {bookingStep} of 2
                     </span>
                     <span className="font-extrabold text-sm font-['Outfit'] text-gray-900">
                       {bookingStep === 1 
@@ -867,204 +886,82 @@ export default function FreeTrialPage({ navigateTo }) {
               </button>
             </div>
 
-            {/* STEP 0: ONE QUESTION AT A TIME (CLICK YES/NO TO AUTO-ADVANCE) */}
-            {bookingStep === 0 && (
-              <div className="py-1">
-                {preCheckStep === 1 ? (
-                  /* QUESTION 1: Does your child have skating experience? */
-                  <div 
-                    key="question-1"
-                    className={`text-center py-2 sm:py-3 ${questionSlideDir === 'left' ? 'question-slide-in-left' : 'question-slide-in-right'}`}
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-3 border border-blue-100 shadow-xs">
-                      <Sparkles className="w-6 h-6 text-blue-600" />
-                    </div>
+            {/* STEP 0: TWO QUICK PRE-CHECK QUESTIONS (TAP AN ANSWER TO AUTO-ADVANCE) */}
+            {bookingStep === 0 && (() => {
+              const q = preCheckStep === 1
+                ? {
+                    key: 'question-1',
+                    Icon: Sparkles,
+                    eyebrow: 'Quick pre-check',
+                    title: 'Does your child have any skating experience?',
+                    sub: 'This helps our certified coach plan drills at the right comfort and balance level.',
+                    onAnswer: handleAnswerQuestion1,
+                    saving: 'Got it — next question…',
+                    options: [
+                      { value: 'yes', emoji: '🛼', label: 'Yes', hint: 'Has skated before' },
+                      { value: 'no', emoji: '🌱', label: 'No', hint: 'First timer / beginner' },
+                    ],
+                  }
+                : {
+                    key: 'question-2',
+                    Icon: ShieldCheck,
+                    eyebrow: 'Last question',
+                    title: 'Does your child have their own skates?',
+                    sub: 'No skates? No problem — free sanitized rental skates and safety pads are provided at Al Nahyan.',
+                    onAnswer: handleAnswerQuestion2,
+                    saving: 'All set — opening the schedule…',
+                    options: [
+                      { value: 'yes', emoji: '⛸️', label: 'Yes', hint: "We'll bring our own" },
+                      { value: 'no', emoji: '🎒', label: 'No', hint: 'Need rental skates' },
+                    ],
+                  };
+              const { Icon } = q;
+              return (
+                <div
+                  key={q.key}
+                  className={`pq-body ${questionSlideDir === 'left' ? 'question-slide-in-left' : 'question-slide-in-right'}`}
+                >
+                  <div className="pq-icon"><Icon className="w-7 h-7" /></div>
+                  <div className="pq-eyebrow">{q.eyebrow}</div>
+                  <h2 className="pq-title">{q.title}</h2>
+                  <p className="pq-sub">{q.sub}</p>
 
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-[11px] font-bold text-blue-700 mb-2">
-                      <span>Question 1 of 2</span>
-                    </div>
-
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 font-['Outfit'] leading-snug max-w-sm mx-auto mb-2">
-                      Does your child have any skating experience?
-                    </h2>
-
-                    <p className="text-xs sm:text-sm text-slate-500 max-w-xs mx-auto mb-6 leading-relaxed">
-                      Helps our certified coach tailor 1:1 drills to their comfort & balance level.
-                    </p>
-
-                    {/* YES / NO BUTTONS -> CLICKING ADVANCES TO QUESTION 2 */}
-                    <div className="grid grid-cols-2 gap-3.5 max-w-xs mx-auto">
-                      <button
-                        type="button"
-                        disabled={isAnswering}
-                        onClick={() => handleAnswerQuestion1('yes')}
-                        className={`group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer ${
-                          selectedAnswer === 'yes'
-                            ? 'bg-blue-50 border-2 border-blue-600 shadow-md ring-2 ring-blue-400/40 scale-[1.02]'
-                            : 'bg-white border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 hover:shadow-lg active:scale-95'
-                        }`}
-                      >
-                        {selectedAnswer === 'yes' && (
-                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs animate-scaleIn">
-                            <Check className="w-3 h-3" />
-                          </div>
-                        )}
-                        <span className={`text-2xl font-black font-['Outfit'] transition-colors ${
-                          selectedAnswer === 'yes' ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-600'
-                        }`}>
-                          Yes
-                        </span>
-                        <span className={`text-[11px] font-semibold mt-1 transition-colors ${
-                          selectedAnswer === 'yes' ? 'text-blue-600' : 'text-slate-400 group-hover:text-blue-600'
-                        }`}>
-                          Has skated before
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={isAnswering}
-                        onClick={() => handleAnswerQuestion1('no')}
-                        className={`group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer ${
-                          selectedAnswer === 'no'
-                            ? 'bg-blue-50 border-2 border-blue-600 shadow-md ring-2 ring-blue-400/40 scale-[1.02]'
-                            : 'bg-white border-2 border-slate-200 hover:border-blue-600 hover:bg-blue-50/50 hover:shadow-lg active:scale-95'
-                        }`}
-                      >
-                        {selectedAnswer === 'no' && (
-                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs animate-scaleIn">
-                            <Check className="w-3 h-3" />
-                          </div>
-                        )}
-                        <span className={`text-2xl font-black font-['Outfit'] transition-colors ${
-                          selectedAnswer === 'no' ? 'text-blue-600' : 'text-slate-900 group-hover:text-blue-600'
-                        }`}>
-                          No
-                        </span>
-                        <span className={`text-[11px] font-semibold mt-1 transition-colors ${
-                          selectedAnswer === 'no' ? 'text-blue-600' : 'text-slate-400 group-hover:text-blue-600'
-                        }`}>
-                          First timer / beginner
-                        </span>
-                      </button>
-                    </div>
-
-                    {/* Feedback when answering vs preview banner */}
-                    {isAnswering && selectedAnswer ? (
-                      <div className="mt-6 flex items-center justify-center gap-2 text-xs font-bold text-blue-600 animate-pulse">
-                        <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping" />
-                        <span>Saving answer... Loading Question 2 (Skates & Equipment)</span>
-                      </div>
-                    ) : (
-                      <div className="mt-6 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50/80 border border-amber-200/80 text-[11px] font-medium text-amber-900 shadow-2xs">
-                        <span className="font-bold text-amber-600">Up next:</span>
-                        <span>Question 2 will ask if your child has skates</span>
-                        <ChevronRight className="w-3.5 h-3.5 text-amber-600" />
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  /* QUESTION 2: Does your child have skates? (YELLOW THEME) */
-                  <div 
-                    key="question-2"
-                    className={`text-center py-2 sm:py-3 ${questionSlideDir === 'left' ? 'question-slide-in-left' : 'question-slide-in-right'}`}
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-3 border border-amber-300 shadow-xs">
-                      <ShieldCheck className="w-6 h-6 text-amber-600" />
-                    </div>
-
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 border border-amber-300 text-[11px] font-bold text-amber-900 mb-2">
-                      <Check className="w-3.5 h-3.5 text-amber-700" />
-                      <span>Question 2 of 2 • Final Pre-Check</span>
-                    </div>
-
-                    <h2 className="text-xl sm:text-2xl font-black text-amber-500 font-['Outfit'] leading-snug max-w-sm mx-auto mb-2">
-                      Does your child have their own skates?
-                    </h2>
-
-                    <p className="text-xs sm:text-sm text-slate-500 max-w-xs mx-auto mb-6 leading-relaxed">
-                      Free sanitized rental skates & protective pad kits are provided exclusively at Al Nahyan.
-                    </p>
-
-                    {/* YES / NO BUTTONS -> CLICKING AUTO-ADVANCES TO CONTACT & SESSION DATE */}
-                    <div className="grid grid-cols-2 gap-3.5 max-w-xs mx-auto">
-                      <button
-                        type="button"
-                        disabled={isAnswering}
-                        onClick={() => handleAnswerQuestion2('yes')}
-                        className={`group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer ${
-                          selectedAnswer === 'yes'
-                            ? 'bg-amber-50 border-2 border-amber-500 shadow-md ring-2 ring-amber-400/40 scale-[1.02]'
-                            : 'bg-white border-2 border-slate-200 hover:border-amber-500 hover:bg-amber-50/50 hover:shadow-lg active:scale-95'
-                        }`}
-                      >
-                        {selectedAnswer === 'yes' && (
-                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs animate-scaleIn">
-                            <Check className="w-3 h-3" />
-                          </div>
-                        )}
-                        <span className={`text-2xl font-black font-['Outfit'] transition-colors ${
-                          selectedAnswer === 'yes' ? 'text-amber-600' : 'text-slate-900 group-hover:text-amber-600'
-                        }`}>
-                          Yes
-                        </span>
-                        <span className={`text-[11px] font-semibold mt-1 transition-colors ${
-                          selectedAnswer === 'yes' ? 'text-amber-600' : 'text-slate-400 group-hover:text-amber-600'
-                        }`}>
-                          Will bring own skates
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={isAnswering}
-                        onClick={() => handleAnswerQuestion2('no')}
-                        className={`group relative flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer ${
-                          selectedAnswer === 'no'
-                            ? 'bg-amber-50 border-2 border-amber-500 shadow-md ring-2 ring-amber-400/40 scale-[1.02]'
-                            : 'bg-white border-2 border-slate-200 hover:border-amber-500 hover:bg-amber-50/50 hover:shadow-lg active:scale-95'
-                        }`}
-                      >
-                        {selectedAnswer === 'no' && (
-                          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs animate-scaleIn">
-                            <Check className="w-3 h-3" />
-                          </div>
-                        )}
-                        <span className={`text-2xl font-black font-['Outfit'] transition-colors ${
-                          selectedAnswer === 'no' ? 'text-amber-600' : 'text-slate-900 group-hover:text-amber-600'
-                        }`}>
-                          No
-                        </span>
-                        <span className={`text-[11px] font-semibold mt-1 transition-colors ${
-                          selectedAnswer === 'no' ? 'text-amber-600' : 'text-slate-400 group-hover:text-amber-600'
-                        }`}>
-                          Need rental skates
-                        </span>
-                      </button>
-                    </div>
-
-                    {isAnswering && selectedAnswer ? (
-                      <div className="mt-6 flex items-center justify-center gap-2 text-xs font-bold text-amber-600 animate-pulse">
-                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
-                        <span>Ready! Opening Session Schedule & Branch Selection...</span>
-                      </div>
-                    ) : (
-                      /* Back to Question 1 button */
-                      <div className="mt-6 flex items-center justify-center">
+                  <div className={`pq-options ${isAnswering ? 'busy' : ''}`} role="radiogroup" aria-label={q.title}>
+                    {q.options.map((o) => {
+                      const on = selectedAnswer === o.value;
+                      return (
                         <button
+                          key={o.value}
                           type="button"
-                          onClick={handleBackToQuestion1}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-amber-600 transition-colors py-1.5 px-3.5 rounded-lg hover:bg-amber-50 cursor-pointer"
+                          role="radio"
+                          aria-checked={on}
+                          disabled={isAnswering}
+                          onClick={() => q.onAnswer(o.value)}
+                          className={`pq-option ${on ? 'on' : ''}`}
                         >
-                          <ChevronLeft className="w-4 h-4" />
-                          <span>Back to Question 1</span>
+                          <span className="pq-radio">{on && <Check className="w-3 h-3" />}</span>
+                          <span className="pq-emoji" aria-hidden="true">{o.emoji}</span>
+                          <span className="pq-label">{o.label}</span>
+                          <span className="pq-hint">{o.hint}</span>
                         </button>
-                      </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="pq-foot">
+                    {isAnswering && selectedAnswer ? (
+                      <span className="pq-saving"><CheckCircle2 className="w-4 h-4" /> {q.saving}</span>
+                    ) : preCheckStep === 2 ? (
+                      <button type="button" onClick={handleBackToQuestion1} className="pq-back">
+                        <ChevronLeft className="w-4 h-4" /> Back
+                      </button>
+                    ) : (
+                      <span className="pq-note"><Lock className="w-3.5 h-3.5" /> Takes 10 seconds · tap an answer to continue</span>
                     )}
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              );
+            })()}
 
             {/* STEP 1 FORM: Location, Email, Phone & Dynamic Location Calendar Date Picker */}
             {bookingStep === 1 && (
@@ -1420,6 +1317,12 @@ export default function FreeTrialPage({ navigateTo }) {
                   )}
                 </div>
 
+                {paymentError && (
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-sm font-semibold">
+                    {paymentError}
+                  </div>
+                )}
+
                 {/* Action Buttons: Back + Proceed to Payment */}
                 <div className="flex gap-2.5 pt-2">
                   <button
@@ -1432,245 +1335,24 @@ export default function FreeTrialPage({ navigateTo }) {
 
                   <button
                     type="submit"
-                    className="flex-1 trial-btn-primary"
+                    id="trial-proceed-to-payment"
+                    disabled={isProcessing}
+                    className="flex-1 trial-btn-primary disabled:opacity-70"
                   >
-                    <span>Proceed to Payment (30 AED)</span>
+                    <span>{isProcessing ? 'Opening secure payment…' : 'Proceed to Payment (30 AED)'}</span>
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </div>
+                <p className="text-center text-[12px] font-semibold text-slate-500 flex items-center justify-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                  You'll pay on our secure payment page, then come straight back here.
+                </p>
 
               </form>
             )}
 
-            {/* STEP 3 FORM: Payment Method (Card or Bank Transfer) */}
-            {bookingStep === 3 && (
-              <form onSubmit={handleFinalPayment} className="space-y-4">
-                
-                {/* Payment Amount Summary Banner */}
-                <div className="flex items-center justify-between p-3.5 rounded-xl bg-blue-50/80 border border-blue-200">
-                  <div>
-                    <div className="text-[11px] font-bold text-blue-900 uppercase">Trial Session Pass</div>
-                    <div className="text-xs text-blue-700">{selectedTimeSlot} • {months[currentMonthIndex].split(' ')[0]} {selectedDay}, 2026</div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-black text-blue-900">30.00 <span className="text-xs">AED</span></div>
-                    <div className="text-[10px] font-bold text-blue-600">30 Dirhams only</div>
-                  </div>
-                </div>
-
-                {/* Payment Method Selector Tabs */}
-                <div className="booking-input-group">
-                  <label className="booking-label">
-                    Select Payment Method *
-                  </label>
-                  <div className="payment-tabs">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPaymentMethod('card');
-                        setCardError('');
-                        setBankError('');
-                      }}
-                      className={`payment-tab-btn ${paymentMethod === 'card' ? 'active' : ''}`}
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      <span>Card Payment</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPaymentMethod('bank');
-                        setCardError('');
-                        setBankError('');
-                      }}
-                      className={`payment-tab-btn ${paymentMethod === 'bank' ? 'active' : ''}`}
-                    >
-                      <Building2 className="w-4 h-4" />
-                      <span>Bank Transfer</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Option 1: Credit / Debit Card Form */}
-                {paymentMethod === 'card' && (
-                  <div className="space-y-3 animate-fadeIn">
-                    <div className="booking-input-group">
-                      <label className="booking-label">Cardholder Name *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. John Doe"
-                        value={cardHolder}
-                        onChange={(e) => {
-                          setCardHolder(e.target.value);
-                          if (cardError) setCardError('');
-                        }}
-                        className="booking-input"
-                      />
-                    </div>
-
-                    <div className="booking-input-group">
-                      <label className="booking-label">Card Number *</label>
-                      <div className="booking-input-wrapper">
-                        <CreditCard className="booking-input-icon" />
-                        <input
-                          type="text"
-                          required
-                          maxLength={19}
-                          placeholder="4000 1234 5678 9010"
-                          value={cardNumber}
-                          onChange={(e) => {
-                            let val = e.target.value.replace(/\D/g, '').slice(0, 16);
-                            let formatted = val.replace(/(\d{4})(?=\d)/g, '$1 ');
-                            setCardNumber(formatted);
-                            if (cardError) setCardError('');
-                          }}
-                          className="booking-input-with-icon"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="booking-input-group">
-                        <label className="booking-label">Expiry (MM/YY) *</label>
-                        <input
-                          type="text"
-                          required
-                          maxLength={5}
-                          placeholder="MM/YY"
-                          value={cardExpiry}
-                          onChange={(e) => {
-                            let val = e.target.value.replace(/\D/g, '').slice(0, 4);
-                            if (val.length >= 3) {
-                              val = `${val.slice(0, 2)}/${val.slice(2)}`;
-                            }
-                            setCardExpiry(val);
-                            if (cardError) setCardError('');
-                          }}
-                          className="booking-input"
-                        />
-                      </div>
-
-                      <div className="booking-input-group">
-                        <label className="booking-label">CVV / CVC *</label>
-                        <div className="booking-input-wrapper">
-                          <Lock className="booking-input-icon" />
-                          <input
-                            type="password"
-                            required
-                            maxLength={4}
-                            placeholder="123"
-                            value={cardCvv}
-                            onChange={(e) => {
-                              let val = e.target.value.replace(/\D/g, '').slice(0, 4);
-                              setCardCvv(val);
-                              if (cardError) setCardError('');
-                            }}
-                            className="booking-input-with-icon"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {cardError && (
-                      <div className="text-xs text-red-600 font-bold p-2 rounded-lg bg-red-50 border border-red-200">
-                        ⚠️ {cardError}
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-1.5 text-[11px] text-gray-500 pt-1">
-                      <Shield className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                      <span>256-Bit SSL Encrypted & Bank-Grade Security</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Option 2: Bank Transfer Details Form */}
-                {paymentMethod === 'bank' && (
-                  <div className="space-y-3 animate-fadeIn">
-                    {/* Bank Details Card */}
-                    <div className="bank-info-box">
-                      <div className="bank-info-title">
-                        <Building2 className="w-4 h-4 text-blue-600" />
-                        <span>Strategy Official Bank Account (UAE)</span>
-                      </div>
-                      <div className="bank-info-grid">
-                        <div className="bank-info-item">
-                          <div className="bank-info-label">Bank</div>
-                          <div className="bank-info-val">Emirates NBD</div>
-                        </div>
-                        <div className="bank-info-item">
-                          <div className="bank-info-label">Account Name</div>
-                          <div className="bank-info-val truncate">Strategy Skate LLC</div>
-                        </div>
-                        <div className="bank-info-item col-span-2">
-                          <div className="bank-info-label">IBAN Number</div>
-                          <div className="bank-info-val font-mono text-[11px] tracking-wide">AE24 0260 0012 3456 7890 01</div>
-                        </div>
-                      </div>
-                      <div className="text-[11px] text-blue-800 mt-2 font-medium">
-                        Transfer <strong>30.00 AED</strong> using the official bank details above for pass activation.
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Action Buttons: Back + Confirm Payment */}
-                <div className="flex gap-2.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setBookingStep(2)}
-                    className="booking-back-btn"
-                  >
-                    ← Back
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={isProcessing}
-                    className="flex-1 trial-btn-primary"
-                  >
-                    <span>{isProcessing ? 'Processing Payment...' : 'Pay 30.00 AED & Get Pass'}</span>
-                    <Zap className="w-4 h-4 fill-white" />
-                  </button>
-                </div>
-
-              </form>
-            )}
 
           </div>
-        </div>
-      )}
-
-      {/* =========================================================================
-          WHATSAPP TRIAL CHATBOT POPUP (ON ICON CLICK)
-          ========================================================================= */}
-      {isChatbotOpen && (
-        <div className="fixed inset-0 z-[9999] flex flex-col sm:items-center sm:justify-center sm:p-4 bg-[#efeae2] sm:bg-black/60">
-          <div className="w-full h-full sm:max-w-md sm:h-[85vh] sm:max-h-[800px] shadow-[0_10px_50px_rgba(0,0,0,0.45)] sm:rounded-3xl overflow-hidden">
-            <SkateTrialChatbot 
-              isFloating={true}
-            onClose={() => setIsChatbotOpen(false)}
-            onMinimize={() => setIsChatbotOpen(false)}
-            onConfirmBooking={handleBotConfirmBooking}
-          />
-          </div>
-        </div>
-      )}
-
-      {/* Floating Chatbot Icon on Bottom Right Corner */}
-      {!isChatbotOpen && (
-        <div className="fixed bottom-6 right-6 z-40">
-          <button
-            onClick={() => setIsChatbotOpen(true)}
-            className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white shadow-2xl flex items-center justify-center transition-all hover:scale-110 border-2 border-white shadow-emerald-600/50 group cursor-pointer relative"
-            title="Chat with Coach Leo on WhatsApp"
-            aria-label="Open Chatbot"
-          >
-            <span className="material-symbols-outlined text-[30px] sm:text-[34px] text-white">chat</span>
-            <span className="w-3.5 h-3.5 rounded-full bg-emerald-400 absolute top-0.5 right-0.5 border-2 border-white animate-pulse" />
-          </button>
         </div>
       )}
 

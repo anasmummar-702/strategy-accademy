@@ -119,6 +119,16 @@ export const adminApi = {
     return res;
   },
 
+  // Create a new product, or update it when it already has an id
+  async saveProduct(product) {
+    const { id, ...body } = product;
+    const res = await apiRequest(id ? `/admin/products/${id}` : '/admin/products', {
+      method: id ? 'PUT' : 'POST',
+      body: JSON.stringify(body),
+    });
+    return res.data;
+  },
+
   // File Upload
   async uploadFile(file) {
     const formData = new FormData();

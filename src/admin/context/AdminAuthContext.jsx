@@ -25,6 +25,14 @@ export const DEFAULT_STORE_ADMIN = {
 
 export const DEFAULT_DEV_ADMIN = DEFAULT_SUPER_ADMIN;
 
+// Accounts that can sign in while the server is unreachable.
+// NOTE: these live in the website code, so they are not truly secret — a real
+// server with proper logins is needed for real security.
+const OFFLINE_ACCOUNTS = {
+  'admin@strategy.ae': { user: DEFAULT_SUPER_ADMIN, passwords: ['admin123', 'Password123!'], token: 'demo_jwt_token_strategy_super_admin' },
+  'store@strategy.ae': { user: DEFAULT_STORE_ADMIN, passwords: ['admin123', 'store123', 'Password123!'], token: 'demo_jwt_token_strategy_store_admin' },
+};
+
 export const AdminAuthProvider = ({ children }) => {
   const [admin, setAdmin] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -71,9 +79,10 @@ export const AdminAuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
+  // Note: login does not touch the global `loading` flag, so the sign-in form stays on screen
+  // (keeping what was typed) and shows its own spinner.
   const login = async (email, password) => {
     setError(null);
-    setLoading(true);
     const normalizedEmail = (email || '').trim().toLowerCase();
 
     try {
@@ -83,48 +92,27 @@ export const AdminAuthProvider = ({ children }) => {
       localStorage.setItem('strategy_admin_demo_user', JSON.stringify(data.user));
       return { success: true, user: data.user };
     } catch (err) {
-      console.warn('API login failed, evaluating demo login:', err.message);
-
-      // Check if Store Admin
-      if (
-        normalizedEmail === 'store@strategy.ae' ||
-        normalizedEmail === 'manager@strategy.ae' ||
-        normalizedEmail.includes('store') ||
-        password === 'store123'
-      ) {
-        const storeUser = {
-          ...DEFAULT_STORE_ADMIN,
-          email: normalizedEmail || DEFAULT_STORE_ADMIN.email,
-        };
-        setAdmin(storeUser);
-        setAuthToken('demo_jwt_token_strategy_store_admin');
-        localStorage.setItem('strategy_admin_demo_user', JSON.stringify(storeUser));
-        setLoading(false);
-        return { success: true, user: storeUser };
+      // The server answered and said no: never fall back to the offline sign-in.
+      if (!err?.details?.isNetworkError) {
+        const msg = 'That email or password is not right.';
+        setError(msg);
+        return { success: false, error: msg };
       }
 
-      // Check if Super Admin / standard demo login
-      if (
-        normalizedEmail === 'admin@strategy.ae' ||
-        normalizedEmail === 'owner@strategy.ae' ||
-        password === 'admin123' ||
-        password === 'admin' ||
-        !normalizedEmail
-      ) {
-        const superUser = {
-          ...DEFAULT_SUPER_ADMIN,
-          email: normalizedEmail || DEFAULT_SUPER_ADMIN.email,
-        };
-        setAdmin(superUser);
-        setAuthToken('demo_jwt_token_strategy_super_admin');
-        localStorage.setItem('strategy_admin_demo_user', JSON.stringify(superUser));
-        setLoading(false);
-        return { success: true, user: superUser };
+      // Server unreachable (e.g. the live website has no server): offline sign-in,
+      // but only for the two real accounts and their passwords.
+      const account = OFFLINE_ACCOUNTS[normalizedEmail];
+      if (account && account.passwords.includes(password)) {
+        const user = { ...account.user, email: normalizedEmail };
+        setAdmin(user);
+        setAuthToken(account.token);
+        localStorage.setItem('strategy_admin_demo_user', JSON.stringify(user));
+        return { success: true, user };
       }
 
-      setError(err.message || 'Invalid email or password');
-      setLoading(false);
-      return { success: false, error: err.message };
+      const msg = 'That email or password is not right.';
+      setError(msg);
+      return { success: false, error: msg };
     }
   };
 

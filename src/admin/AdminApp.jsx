@@ -2,79 +2,50 @@ import React, { useState, useEffect } from 'react';
 import { AdminAuthProvider, useAdminAuth } from './context/AdminAuthContext';
 import AdminLayout from './layouts/AdminLayout';
 import AdminLogin from './pages/AdminLogin';
-import DashboardView from './modules/dashboard/DashboardView';
+import StoreHome from './modules/dashboard/StoreHome';
+import AcademyHome from './modules/dashboard/AcademyHome';
 import ProductsView from './modules/products/ProductsView';
 import ProductFormView from './modules/products/ProductFormView';
 import CategoriesView from './modules/categories/CategoriesView';
-import CollectionsView from './modules/categories/CollectionsView';
-import HomepageBuilderView from './modules/homepage/HomepageBuilderView';
-import BannersView from './modules/banners/BannersView';
 import OrdersView from './modules/orders/OrdersView';
-import AcademyView from './modules/academy/AcademyView';
 import CustomersView from './modules/customers/CustomersView';
-import CouponsView from './modules/coupons/CouponsView';
-import ReviewsView from './modules/reviews/ReviewsView';
-import NavigationView from './modules/navigation/NavigationView';
-import FaqsView from './modules/faqs/FaqsView';
 import SettingsView from './modules/settings/SettingsView';
-import UsersView from './modules/users/UsersView';
-import AuditView from './modules/audit/AuditView';
+import AcademyView from './modules/academy/AcademyView';
 import GalleriesView from './modules/galleries/GalleriesView';
 import TrialLeadsView from './modules/leads/TrialLeadsView';
-import { Package } from 'lucide-react';
+
+// Pages each login is allowed to open
+const STORE_PAGES = ['dashboard', 'products', 'product-add', 'categories', 'orders', 'customers', 'settings'];
+const ACADEMY_PAGES = ['dashboard', 'trial-leads', 'academy', 'galleries'];
 
 function AdminMainContent() {
   const { admin, isAuthenticated, loading } = useAdminAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [workspace, setWorkspace] = useState('store');
-  const [openNewProductTrigger, setOpenNewProductTrigger] = useState(0);
   const [editingProduct, setEditingProduct] = useState(null);
 
   const isStoreAdmin = admin?.role === 'store_admin';
-  const isSuperAdmin = admin?.role === 'super_admin';
+  const allowedPages = isStoreAdmin ? STORE_PAGES : ACADEMY_PAGES;
 
-  const platformOnlyTabs = ['academy', 'homepage', 'banners', 'galleries', 'users', 'audit', 'navigation', 'faqs', 'trial-leads'];
-  const storeOnlyTabs = ['products', 'product-add', 'categories', 'collections', 'orders', 'customers', 'coupons', 'reviews'];
-
-  // Handle tab change with strict role authorization
-  const handleTabChange = (tabId) => {
-    if (isStoreAdmin && platformOnlyTabs.includes(tabId)) {
-      setActiveTab('dashboard');
-      return;
-    }
-    if (!isStoreAdmin && storeOnlyTabs.includes(tabId)) {
-      setActiveTab('dashboard');
-      return;
-    }
-    setActiveTab(tabId);
+  const goTo = (tabId) => {
+    setActiveTab(allowedPages.includes(tabId) ? tabId : 'dashboard');
+    window.scrollTo({ top: 0 });
   };
 
   const handleAddNewProduct = () => {
     if (!isStoreAdmin) return;
     setEditingProduct(null);
-    setActiveTab('product-add');
+    goTo('product-add');
   };
 
-  // Sync workspace if admin role changes (e.g. via demo switch role)
+  // Go back to Home whenever a different login signs in
   useEffect(() => {
-    setWorkspace(isStoreAdmin ? 'store' : 'platform');
-    if (isStoreAdmin && platformOnlyTabs.includes(activeTab)) {
-      setActiveTab('dashboard');
-    }
-    if (!isStoreAdmin && storeOnlyTabs.includes(activeTab)) {
-      setActiveTab('dashboard');
-    }
+    setActiveTab('dashboard');
   }, [admin?.role]);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center p-6 font-['Plus_Jakarta_Sans',sans-serif]">
-        <div className="space-y-3 text-center max-w-sm">
-          <div className="w-9 h-9 rounded-xl bg-zinc-950 mx-auto flex items-center justify-center font-medium text-white text-sm">
-            S
-          </div>
-          <p className="text-xs text-zinc-500 font-normal">Loading Control Center...</p>
-        </div>
+      <div className="min-h-screen bg-zinc-50 flex items-center justify-center font-['Plus_Jakarta_Sans',sans-serif]">
+        <p className="text-sm text-zinc-500">Loading…</p>
       </div>
     );
   }
@@ -83,164 +54,49 @@ function AdminMainContent() {
     return <AdminLogin />;
   }
 
-  return (
-    <AdminLayout
-      activeTab={activeTab}
-      setActiveTab={handleTabChange}
-      workspace={workspace}
-      setWorkspace={setWorkspace}
-      onAddNewProduct={handleAddNewProduct}
-    >
-      {/* 1. Dashboard View (Tailored for Store Admin vs Admin) */}
-      {activeTab === 'dashboard' && (
-        <DashboardView
-          onNavigate={handleTabChange}
-          workspace={workspace}
-          setWorkspace={setWorkspace}
-        />
-      )}
+  const page = allowedPages.includes(activeTab) ? activeTab : 'dashboard';
 
-      {/* 2. Product & Inventory Management View (Store Admin Only) */}
-      {activeTab === 'products' && isStoreAdmin && (
+  return (
+    <AdminLayout activeTab={page} setActiveTab={goTo} onAddNewProduct={handleAddNewProduct}>
+      {page === 'dashboard' &&
+        (isStoreAdmin ? (
+          <StoreHome onNavigate={goTo} onAddNewProduct={handleAddNewProduct} />
+        ) : (
+          <AcademyHome onNavigate={goTo} />
+        ))}
+
+      {/* Shop pages */}
+      {page === 'products' && (
         <ProductsView
           onAddNewProduct={handleAddNewProduct}
           onEditProduct={(prod) => {
             setEditingProduct(prod);
-            setActiveTab('product-add');
+            goTo('product-add');
           }}
         />
       )}
-
-      {/* 2b. Add / Edit Product Dedicated Full-Page View (Store Admin Only) */}
-      {activeTab === 'product-add' && isStoreAdmin && (
+      {page === 'product-add' && (
         <ProductFormView
           product={editingProduct}
           onCancel={() => {
             setEditingProduct(null);
-            setActiveTab('products');
+            goTo('products');
           }}
-          onSaveSuccess={(savedProd) => {
+          onSaveSuccess={() => {
             setEditingProduct(null);
-            setActiveTab('products');
+            goTo('products');
           }}
         />
       )}
+      {page === 'categories' && <CategoriesView />}
+      {page === 'orders' && <OrdersView />}
+      {page === 'customers' && <CustomersView />}
+      {page === 'settings' && <SettingsView />}
 
-      {/* 3. Category Tree Builder View (Store Admin Only) */}
-      {activeTab === 'categories' && isStoreAdmin && (
-        <CategoriesView />
-      )}
-
-      {/* 4. Collections & Smart Rules View (Store Admin Only) */}
-      {activeTab === 'collections' && isStoreAdmin && (
-        <CollectionsView />
-      )}
-
-      {/* 5. Homepage Builder View (Admin Only) */}
-      {activeTab === 'homepage' && !isStoreAdmin && (
-        <HomepageBuilderView />
-      )}
-
-      {/* 6. Academy Galleries & Media Manager View (Admin Only) */}
-      {(activeTab === 'galleries' || activeTab === 'banners') && !isStoreAdmin && (
-        <GalleriesView />
-      )}
-
-      {/* 7. Order Fulfillment & Logistics View (Store Admin Only) */}
-      {activeTab === 'orders' && isStoreAdmin && (
-        <OrdersView />
-      )}
-
-      {/* 8. Academy & Packages Manager View (Admin Only) */}
-      {activeTab === 'academy' && !isStoreAdmin && (
-        <AcademyView />
-      )}
-
-      {/* 9. Customer Directory View (Store Admin Only) */}
-      {activeTab === 'customers' && isStoreAdmin && (
-        <CustomersView />
-      )}
-
-      {/* 10. Coupons & Discount Offers View (Store Admin Only) */}
-      {activeTab === 'coupons' && isStoreAdmin && (
-        <CouponsView />
-      )}
-
-      {/* 11. Product Reviews Moderation View (Store Admin Only) */}
-      {activeTab === 'reviews' && isStoreAdmin && (
-        <ReviewsView />
-      )}
-
-      {/* 12. Navbar & Footer Menu Builder View (Admin Only) */}
-      {activeTab === 'navigation' && !isStoreAdmin && (
-        <NavigationView />
-      )}
-
-      {/* 13. FAQs & Customer Knowledge Base View (Admin Only) */}
-      {activeTab === 'faqs' && !isStoreAdmin && (
-        <FaqsView />
-      )}
-
-      {/* 14. Storefront / Platform Settings View */}
-      {activeTab === 'settings' && (
-        <SettingsView />
-      )}
-
-      {/* 15. Admin Users & RBAC View (Admin Only) */}
-      {activeTab === 'users' && !isStoreAdmin && (
-        <UsersView />
-      )}
-
-      {/* 16. System Audit Logs View (Admin Only) */}
-      {activeTab === 'audit' && !isStoreAdmin && (
-        <AuditView />
-      )}
-
-      {/* 17. Trial Leads & CRM View (Admin Only) */}
-      {activeTab === 'trial-leads' && !isStoreAdmin && (
-        <TrialLeadsView />
-      )}
-
-      {/* 17. Fallback Stub (For any unmapped route) */}
-      {activeTab !== 'dashboard' &&
-        activeTab !== 'products' &&
-        activeTab !== 'categories' &&
-        activeTab !== 'collections' &&
-        activeTab !== 'homepage' &&
-        activeTab !== 'banners' &&
-        activeTab !== 'galleries' &&
-        activeTab !== 'orders' &&
-        activeTab !== 'academy' &&
-        activeTab !== 'customers' &&
-        activeTab !== 'coupons' &&
-        activeTab !== 'reviews' &&
-        activeTab !== 'navigation' &&
-        activeTab !== 'faqs' &&
-        activeTab !== 'settings' &&
-        activeTab !== 'users' &&
-        activeTab !== 'audit' &&
-        activeTab !== 'trial-leads' &&
-        activeTab !== 'product-add' && (
-        <div className="bg-white border border-zinc-200/90 rounded-xl p-8 space-y-4 text-center shadow-none">
-          <div className="w-10 h-10 rounded-xl bg-zinc-100 border border-zinc-200/80 text-zinc-700 flex items-center justify-center mx-auto">
-            <Package className="w-5 h-5" />
-          </div>
-          <div className="max-w-md mx-auto space-y-1">
-            <h3 className="text-base font-semibold text-zinc-900 capitalize">
-              STRATEGY Module: {activeTab}
-            </h3>
-            <p className="text-xs text-zinc-500">
-              Module <code className="text-zinc-900 font-mono font-medium">[{activeTab}]</code> is ready for Phase feature integration.
-            </p>
-          </div>
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className="px-3.5 py-1.5 bg-zinc-900 hover:bg-black text-white font-medium text-xs rounded-lg transition inline-block cursor-pointer"
-          >
-            ← Return to Dashboard
-          </button>
-        </div>
-      )}
+      {/* Academy pages */}
+      {page === 'trial-leads' && <TrialLeadsView />}
+      {page === 'academy' && <AcademyView />}
+      {page === 'galleries' && <GalleriesView />}
     </AdminLayout>
   );
 }
@@ -248,7 +104,9 @@ function AdminMainContent() {
 export default function AdminApp() {
   return (
     <AdminAuthProvider>
-      <AdminMainContent />
+      <div className="admin-root">
+        <AdminMainContent />
+      </div>
     </AdminAuthProvider>
   );
 }

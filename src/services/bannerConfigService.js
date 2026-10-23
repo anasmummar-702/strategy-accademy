@@ -187,8 +187,8 @@ export const DEFAULT_CATEGORY_BANNERS = [
 
 const STORAGE_KEY = 'strategy_category_banners';
 
-// Retrieve all stored category banners, merging with default definitions
-export function getStoredCategoryBanners() {
+// All banners (built-in + saved), including ones marked as removed
+function readAllBanners() {
   if (typeof window === 'undefined') return DEFAULT_CATEGORY_BANNERS;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -211,25 +211,41 @@ export function getStoredCategoryBanners() {
   }
 }
 
+// Retrieve all stored category banners, merging with default definitions.
+// Banners that were removed are remembered with `deleted: true` (otherwise the
+// built-in ones would always come back) and are left out here.
+export function getStoredCategoryBanners() {
+  return readAllBanners().filter((b) => !b.deleted);
+}
+
 // Save all category banners and dispatch an event so all views update dynamically
 export function saveCategoryBanners(banners) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return false;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(banners));
     window.dispatchEvent(new CustomEvent('strategy-banners-updated', { detail: banners }));
+    return true;
   } catch (e) {
     console.error('Error saving category banners to localStorage:', e);
+    return false;
   }
+}
+
+// Remove the banner for a page (used when a banner's page address is renamed)
+export function removeCategoryBanner(slug) {
+  const target = String(slug).toLowerCase();
+  const all = readAllBanners().map((b) => ((b.slug || '').toLowerCase() === target ? { ...b, deleted: true } : b));
+  return saveCategoryBanners(all);
 }
 
 // Update or insert a single category banner by slug
 export function upsertCategoryBanner(slug, bannerData) {
-  const current = getStoredCategoryBanners();
-  const index = current.findIndex((b) => b.slug.toLowerCase() === slug.toLowerCase());
+  const current = readAllBanners(); // keep "removed" markers so removed banners stay removed
+  const index = current.findIndex((b) => (b.slug || '').toLowerCase() === slug.toLowerCase());
   let next;
   if (index >= 0) {
     next = [...current];
-    next[index] = { ...next[index], ...bannerData };
+    next[index] = { ...next[index], ...bannerData, deleted: false };
   } else {
     next = [
       ...current,
@@ -249,8 +265,8 @@ export function upsertCategoryBanner(slug, bannerData) {
       }
     ];
   }
-  saveCategoryBanners(next);
-  return next;
+  // Returns the new list, or null if it could not be saved (e.g. storage full)
+  return saveCategoryBanners(next) ? next : null;
 }
 
 // Get the specific banner matching a category filter (e.g. 'category-skating', 'skating')

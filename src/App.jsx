@@ -32,6 +32,11 @@ const COURSES_COMING_SOON = true;
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
+    // Return address after paying for a trial class: /thank-you (set this in the payment provider)
+    if (typeof window !== 'undefined' && /^\/(trial-)?thank-you\/?$/i.test(window.location.pathname)) {
+      window.history.replaceState(null, '', '/#trial-thank-you');
+      return 'trial-thank-you';
+    }
     if (typeof window !== 'undefined' && window.location.hash) {
       const cleanHash = window.location.hash.replace('#', '').trim();
       if (cleanHash === 'sec-about-strategy' || cleanHash === 'about-strategy') return 'shop-home';
@@ -222,6 +227,7 @@ export default function App() {
        !isProductView &&
        activeTab !== 'trial' && 
        activeTab !== 'trial-skating' && 
+       activeTab !== 'trial-thank-you' && 
        activeTab !== 'trial-basketball' && 
        activeTab !== 'basketball' && 
        activeTab !== 'basketball-checkout' && 
@@ -306,6 +312,14 @@ export default function App() {
         {activeTab === 'trial-skating' && (
           <FreeTrialPage
             navigateTo={navigateTo}
+          />
+        )}
+
+        {/* Thank-you page after paying for a trial class online */}
+        {activeTab === 'trial-thank-you' && (
+          <FreeTrialPage
+            navigateTo={navigateTo}
+            paymentReturn
           />
         )}
 
@@ -436,6 +450,7 @@ export default function App() {
        !isShopView &&
        activeTab !== 'trial' && 
        activeTab !== 'trial-skating' && 
+       activeTab !== 'trial-thank-you' && 
        activeTab !== 'trial-basketball' && 
        activeTab !== 'basketball' && 
        activeTab !== 'basketball-checkout' && 

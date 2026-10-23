@@ -182,7 +182,7 @@ export default function BasketballCheckoutPage({ navigateTo }) {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [ageCategory, setAgeCategory] = useState('youth');
-  const [trainingDays, setTrainingDays] = useState('Sat & Sun (6:00 PM) - Al Nahyan Arena');
+  const trainingDays = 'To be confirmed by your coach - Al Nahyan Arena';
   const [jerseySize, setJerseySize] = useState('Youth L / Adult S');
 
   // Errors
@@ -734,19 +734,6 @@ export default function BasketballCheckoutPage({ navigateTo }) {
                     { value: 'youth', label: 'Junior Pro & Shooting Lab (Ages 9–14)' },
                     { value: 'elite', label: 'Elite High-Performance Prep (Ages 15–18)' },
                     { value: 'adult', label: 'Adult 5v5 League & Open Runs (18+)' }
-                  ]}
-                />
-
-                {/* Preferred Schedule */}
-                <CustomDropdown
-                  label="Preferred Training Days"
-                  value={trainingDays}
-                  onChange={setTrainingDays}
-                  options={[
-                    { value: 'Sat & Sun (6:00 PM) - Al Nahyan Arena', label: 'Saturday & Sunday (6:00 PM) - Al Nahyan Arena' },
-                    { value: 'Sat & Wed (6:00 PM) - Al Nahyan Arena', label: 'Saturday & Wednesday (6:00 PM) - Al Nahyan Arena' },
-                    { value: 'Sun & Wed (6:00 PM) - Al Nahyan Arena', label: 'Sunday & Wednesday (6:00 PM) - Al Nahyan Arena' },
-                    { value: 'Flexible (Sat, Sun, Wed @ 6:00 PM) - Al Nahyan Arena', label: 'Flexible 2x/Week (Sat, Sun or Wed @ 6:00 PM)' }
                   ]}
                 />
 

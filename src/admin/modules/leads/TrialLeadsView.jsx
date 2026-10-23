@@ -1,551 +1,497 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Users, Search, Filter, Mail, Phone, Calendar, ChevronDown,
-  Trash2, Eye, X, MessageSquare, Send, Clock, CheckCircle2,
-  Archive, ArrowUpRight, UserCheck, AlertCircle, Sparkles,
-  Download, MoreHorizontal
+  Search, Phone, Mail, MessageCircle, Trash2, X, Send, Download, Check,
+  ChevronRight, Inbox, RotateCcw, UserCheck,
 } from 'lucide-react';
 import { getAllTrialLeads, updateLeadStatus, deleteTrialLead, addLeadNote } from '../../../utils/trialLeadsData';
 
-// Status config
-const STATUS_CONFIG = {
-  new: { label: 'New Lead', color: '#3b82f6', bg: '#1e3a5f' },
-  contacted: { label: 'Contacted', color: '#f59e0b', bg: '#422006' },
-  converted: { label: 'Converted', color: '#10b981', bg: '#064e3b' },
-  archived: { label: 'Archived', color: '#6b7280', bg: '#1f2937' },
+// The simple path a trial request follows: New → Called → Joined (or Not interested)
+const STATUS = {
+  new: { label: 'New', pill: 'bg-blue-50 text-blue-700 ring-blue-200' },
+  contacted: { label: 'Called', pill: 'bg-amber-50 text-amber-700 ring-amber-200' },
+  converted: { label: 'Joined', pill: 'bg-emerald-50 text-emerald-700 ring-emerald-200' },
+  archived: { label: 'Not interested', pill: 'bg-zinc-100 text-zinc-500 ring-zinc-200' },
 };
 
-const CATEGORY_CONFIG = {
-  skating: { label: 'Skating Trial', color: '#06b6d4', emoji: '⛸️' },
-  basketball: { label: 'Basketball Trial', color: '#f97316', emoji: '🏀' },
-};
+const TABS = [
+  { id: 'new', label: 'To call' },
+  { id: 'contacted', label: 'Called' },
+  { id: 'converted', label: 'Joined' },
+  { id: 'all', label: 'All' },
+];
+
+const SPORTS = [
+  { id: 'all', label: 'All sports' },
+  { id: 'skating', label: '⛸️ Skating' },
+  { id: 'basketball', label: '🏀 Basketball' },
+];
+
+// Forms save the 9-digit local number (e.g. 501234567). Older/other entries may already include +971.
+export function formatPhone(raw) {
+  if (!raw) return '';
+  const s = String(raw).trim();
+  if (s.startsWith('+') || s.startsWith('00')) return s;
+  const digits = s.replace(/\D/g, '').replace(/^0/, '');
+  return `+971 ${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5)}`.trim();
+}
+function phoneDigits(raw) {
+  const s = String(raw || '').trim();
+  let d = s.replace(/\D/g, '');
+  if (s.startsWith('00')) d = d.slice(2);
+  else if (!s.startsWith('+')) d = '971' + d.replace(/^0/, '');
+  return d;
+}
+
+function timeAgo(iso) {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (!isFinite(diff)) return '';
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
+  if (diff < 7 * 86400) return `${Math.floor(diff / 86400)} d ago`;
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function fullDate(iso) {
+  try {
+    return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return iso;
+  }
+}
+
+function summary(lead) {
+  return [
+    lead.age && `${lead.age} yrs`,
+    lead.ageGroup,
+    lead.gender,
+    lead.programType,
+    lead.experience,
+    lead.timeSlot,
+  ].filter(Boolean).join(' · ');
+}
+
+// Online trial-fee payment (only for bookings made through the payment link)
+function PaymentPill({ lead }) {
+  if (lead.paymentStatus === 'paid')
+    return <span className="px-2.5 py-1 rounded-full text-xs font-semibold ring-1 bg-emerald-50 text-emerald-700 ring-emerald-200">Paid 30 AED</span>;
+  if (lead.paymentStatus === 'pending')
+    return <span className="px-2.5 py-1 rounded-full text-xs font-semibold ring-1 bg-zinc-50 text-zinc-500 ring-zinc-200">Payment not finished</span>;
+  return null;
+}
+
+function StatusPill({ status }) {
+  const st = STATUS[status] || STATUS.new;
+  return <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ring-1 ${st.pill}`}>{st.label}</span>;
+}
+
+function ContactButtons({ lead, compact = false }) {
+  if (!lead.phone && !lead.email) return null;
+  const base = 'inline-flex items-center justify-center gap-2 rounded-xl text-sm font-medium transition';
+  const size = compact ? 'w-10 h-10' : 'px-4 py-2.5';
+  return (
+    <>
+      {lead.phone && (
+        <a href={`tel:+${phoneDigits(lead.phone)}`} title="Call" className={`${base} ${size} bg-zinc-900 text-white hover:bg-black`}>
+          <Phone className="w-4 h-4" />
+          {!compact && 'Call'}
+        </a>
+      )}
+      {lead.phone && (
+        <a
+          href={`https://wa.me/${phoneDigits(lead.phone)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title="WhatsApp"
+          className={`${base} ${size} bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100`}
+        >
+          <MessageCircle className="w-4 h-4" />
+          {!compact && 'WhatsApp'}
+        </a>
+      )}
+      {!compact && lead.email && (
+        <a href={`mailto:${lead.email}`} title="Email" className={`${base} ${size} ring-1 ring-zinc-200 text-zinc-700 hover:bg-zinc-50`}>
+          <Mail className="w-4 h-4" />
+          Email
+        </a>
+      )}
+    </>
+  );
+}
+
+// The one obvious "next step" button for each status
+function NextStep({ lead, onChange }) {
+  const btn = 'inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium ring-1 transition cursor-pointer whitespace-nowrap';
+  if (lead.status === 'new')
+    return (
+      <button onClick={() => onChange(lead.id, 'contacted')} className={`${btn} ring-zinc-300 text-zinc-800 hover:bg-zinc-50`}>
+        <Check className="w-4 h-4" /> Mark as called
+      </button>
+    );
+  if (lead.status === 'contacted')
+    return (
+      <button onClick={() => onChange(lead.id, 'converted')} className={`${btn} ring-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100`}>
+        <UserCheck className="w-4 h-4" /> They joined
+      </button>
+    );
+  if (lead.status === 'archived')
+    return (
+      <button onClick={() => onChange(lead.id, 'new')} className={`${btn} ring-zinc-200 text-zinc-600 hover:bg-zinc-50`}>
+        <RotateCcw className="w-4 h-4" /> Move back to “To call”
+      </button>
+    );
+  return null;
+}
 
 export default function TrialLeadsView() {
-  const [leads, setLeads] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterCategory, setFilterCategory] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [selectedLead, setSelectedLead] = useState(null);
+  const [leads, setLeads] = useState(() => getAllTrialLeads());
+  // Open on "To call" – or on "All" when nobody is waiting for a call
+  const [tab, setTab] = useState(() => (getAllTrialLeads().some((l) => (l.status || 'new') === 'new') ? 'new' : 'all'));
+  const [sport, setSport] = useState('all');
+  const [query, setQuery] = useState('');
+  const [openId, setOpenId] = useState(null);
   const [noteText, setNoteText] = useState('');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
-
-  // Load leads
-  const loadLeads = () => {
-    setLeads(getAllTrialLeads());
-  };
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [toast, setToast] = useState('');
 
   useEffect(() => {
-    loadLeads();
-    const handler = () => loadLeads();
-    window.addEventListener('strategy_trial_lead_added', handler);
-    window.addEventListener('storage', handler);
-    return () => {
-      window.removeEventListener('strategy_trial_lead_added', handler);
-      window.removeEventListener('storage', handler);
-    };
+    const reload = () => setLeads(getAllTrialLeads());
+    const events = ['strategy_trial_lead_added', 'strategy_trial_leads_changed', 'storage'];
+    events.forEach((e) => window.addEventListener(e, reload));
+    return () => events.forEach((e) => window.removeEventListener(e, reload));
   }, []);
 
-  // Filtered leads
-  const filteredLeads = useMemo(() => {
-    return leads.filter((lead) => {
-      const matchCategory = filterCategory === 'all' || lead.category === filterCategory;
-      const matchStatus = filterStatus === 'all' || lead.status === filterStatus;
-      const q = searchQuery.toLowerCase();
-      const matchSearch =
-        !q ||
-        (lead.name || '').toLowerCase().includes(q) ||
-        (lead.email || '').toLowerCase().includes(q) ||
-        (lead.phone || '').includes(q);
-      return matchCategory && matchStatus && matchSearch;
-    });
-  }, [leads, filterCategory, filterStatus, searchQuery]);
-
-  // Stats
-  const stats = useMemo(() => {
-    const total = leads.length;
-    const newCount = leads.filter((l) => l.status === 'new').length;
-    const skatingCount = leads.filter((l) => l.category === 'skating').length;
-    const basketballCount = leads.filter((l) => l.category === 'basketball').length;
-    return { total, newCount, skatingCount, basketballCount };
+  const counts = useMemo(() => {
+    const c = { all: leads.length, new: 0, contacted: 0, converted: 0, archived: 0 };
+    leads.forEach((l) => (c[l.status || 'new'] += 1));
+    return c;
   }, [leads]);
 
-  const handleStatusChange = (leadId, newStatus) => {
-    updateLeadStatus(leadId, newStatus);
-    loadLeads();
-    if (selectedLead?.id === leadId) {
-      setSelectedLead((prev) => ({ ...prev, status: newStatus }));
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return leads.filter((l) => {
+      if (tab !== 'all' && (l.status || 'new') !== tab) return false;
+      if (sport !== 'all' && l.category !== sport) return false;
+      if (!q) return true;
+      return [l.name, l.email, l.phone].some((v) => String(v || '').toLowerCase().includes(q));
+    });
+  }, [leads, tab, sport, query]);
+
+  const open = leads.find((l) => l.id === openId) || null;
+
+  const flash = (msg, isError = false) => {
+    setToast({ msg, isError });
+    setTimeout(() => setToast(''), isError ? 6000 : 2500);
+  };
+
+  const changeStatus = (id, status) => {
+    if (!updateLeadStatus(id, status)) {
+      flash("Not saved: this browser's storage is full.", true);
+      return;
     }
+    setLeads(getAllTrialLeads());
+    const name = leads.find((l) => l.id === id)?.name || 'Request';
+    flash(`${name} → ${STATUS[status].label}`);
   };
 
-  const handleDelete = (leadId) => {
-    deleteTrialLead(leadId);
-    loadLeads();
-    if (selectedLead?.id === leadId) setSelectedLead(null);
-    setShowDeleteConfirm(null);
+  const remove = (id) => {
+    deleteTrialLead(id);
+    setLeads(getAllTrialLeads());
+    setOpenId(null);
+    setConfirmDelete(false);
+    flash('Request deleted');
   };
 
-  const handleAddNote = () => {
-    if (!noteText.trim() || !selectedLead) return;
-    addLeadNote(selectedLead.id, noteText.trim());
-    loadLeads();
+  const saveNote = () => {
+    if (!noteText.trim() || !open) return;
+    if (!addLeadNote(open.id, noteText.trim())) {
+      flash("Note not saved: this browser's storage is full.", true);
+      return;
+    }
+    setLeads(getAllTrialLeads());
     setNoteText('');
-    // Refresh selected lead
-    const updated = getAllTrialLeads().find((l) => l.id === selectedLead.id);
-    if (updated) setSelectedLead(updated);
   };
 
-  const formatDate = (iso) => {
-    try {
-      return new Date(iso).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return iso;
-    }
-  };
-
-  const exportCSV = () => {
-    const headers = ['Name', 'Email', 'Phone', 'Category', 'Status', 'Submitted At'];
-    const rows = filteredLeads.map((l) => [
-      l.name || '', l.email || '', l.phone || '', l.category || '', l.status || '', l.submittedAt || ''
+  const downloadList = () => {
+    const headers = ['Name', 'Sport', 'Phone', 'Email', 'Status', 'Details', 'Date'];
+    const rows = shown.map((l) => [
+      l.name || '', l.category || '', formatPhone(l.phone), l.email || '',
+      STATUS[l.status]?.label || '', summary(l), fullDate(l.submittedAt),
     ]);
-    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
     const a = document.createElement('a');
     a.href = url;
-    a.download = `trial_leads_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `trial-requests-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <div className="space-y-5">
-      {/* Header */}
+      {toast && (
+        <div
+          className={`!m-0 fixed top-20 right-6 z-[110] text-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 text-sm font-medium ${
+            toast.isError ? 'bg-rose-700' : 'bg-zinc-900'
+          }`}
+        >
+          {!toast.isError && <Check className="w-4 h-4 text-emerald-400" />}
+          {toast.msg}
+        </div>
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-lg font-semibold text-zinc-900 flex items-center gap-2">
-            <Users className="w-5 h-5 text-indigo-600" />
-            Trial Leads & Registrations
-          </h1>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            User data collected from trial booking pages — categorized by Skating & Basketball
-          </p>
-        </div>
-        <button
-          onClick={exportCSV}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-black text-white text-xs font-medium rounded-lg transition cursor-pointer"
-        >
-          <Download className="w-3.5 h-3.5" />
-          Export CSV
-        </button>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {[
-          { label: 'Total Leads', value: stats.total, icon: Users, color: '#6366f1' },
-          { label: 'New / Uncontacted', value: stats.newCount, icon: Sparkles, color: '#3b82f6' },
-          { label: 'Skating Leads', value: stats.skatingCount, icon: () => <span className="text-base">⛸️</span>, color: '#06b6d4' },
-          { label: 'Basketball Leads', value: stats.basketballCount, icon: () => <span className="text-base">🏀</span>, color: '#f97316' },
-        ].map((stat, i) => (
-          <div
-            key={i}
-            className="bg-white border border-zinc-200/90 rounded-xl p-4 flex items-center gap-3"
+        <p className="text-base text-zinc-500">
+          People who booked a free trial. Call them, then tap <strong className="text-zinc-700">Mark as called</strong>.
+        </p>
+        {leads.length > 0 && (
+          <button
+            onClick={downloadList}
+            className="flex items-center gap-2 px-4 py-2.5 ring-1 ring-zinc-200 bg-white hover:bg-zinc-50 text-zinc-800 text-sm font-medium rounded-xl cursor-pointer"
           >
-            <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: `${stat.color}15` }}
-            >
-              <stat.icon className="w-4 h-4" style={{ color: stat.color }} />
-            </div>
-            <div>
-              <div className="text-lg font-bold text-zinc-900">{stat.value}</div>
-              <div className="text-[10px] text-zinc-500 font-medium uppercase tracking-wider">{stat.label}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Filters & Search */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input
-            type="text"
-            placeholder="Search by name, email, or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 text-zinc-800 placeholder:text-zinc-400"
-          />
-        </div>
-
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-          className="px-3 py-2 text-xs bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 text-zinc-700 cursor-pointer"
-        >
-          <option value="all">All Categories</option>
-          <option value="skating">⛸️ Skating</option>
-          <option value="basketball">🏀 Basketball</option>
-        </select>
-
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="px-3 py-2 text-xs bg-white border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 text-zinc-700 cursor-pointer"
-        >
-          <option value="all">All Statuses</option>
-          <option value="new">🆕 New</option>
-          <option value="contacted">📞 Contacted</option>
-          <option value="converted">✅ Converted</option>
-          <option value="archived">📦 Archived</option>
-        </select>
-      </div>
-
-      {/* Main Content: Table + Detail Panel */}
-      <div className="flex gap-4" style={{ minHeight: 400 }}>
-        {/* Table */}
-        <div className={`flex-1 bg-white border border-zinc-200/90 rounded-xl overflow-hidden transition-all ${selectedLead ? 'w-2/3' : 'w-full'}`}>
-          {filteredLeads.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-12 h-12 rounded-xl bg-zinc-100 flex items-center justify-center mb-3">
-                <Users className="w-6 h-6 text-zinc-400" />
-              </div>
-              <h3 className="text-sm font-semibold text-zinc-700 mb-1">No trial leads yet</h3>
-              <p className="text-xs text-zinc-500 max-w-xs">
-                When users submit trial booking forms on your Skating or Basketball pages, their data will appear here.
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="bg-zinc-50 border-b border-zinc-200">
-                    <th className="text-left px-4 py-2.5 font-semibold text-zinc-500 uppercase tracking-wider text-[10px]">User</th>
-                    <th className="text-left px-4 py-2.5 font-semibold text-zinc-500 uppercase tracking-wider text-[10px]">Contact</th>
-                    <th className="text-left px-4 py-2.5 font-semibold text-zinc-500 uppercase tracking-wider text-[10px]">Category</th>
-                    <th className="text-left px-4 py-2.5 font-semibold text-zinc-500 uppercase tracking-wider text-[10px]">Status</th>
-                    <th className="text-left px-4 py-2.5 font-semibold text-zinc-500 uppercase tracking-wider text-[10px]">Date</th>
-                    <th className="text-right px-4 py-2.5 font-semibold text-zinc-500 uppercase tracking-wider text-[10px]">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-100">
-                  {filteredLeads.map((lead) => {
-                    const cat = CATEGORY_CONFIG[lead.category] || CATEGORY_CONFIG.skating;
-                    const st = STATUS_CONFIG[lead.status] || STATUS_CONFIG.new;
-                    const isSelected = selectedLead?.id === lead.id;
-
-                    return (
-                      <tr
-                        key={lead.id}
-                        onClick={() => setSelectedLead(lead)}
-                        className={`cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50/70' : 'hover:bg-zinc-50/80'}`}
-                      >
-                        {/* User */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div
-                              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0"
-                              style={{ background: `linear-gradient(135deg, ${cat.color}, ${cat.color}aa)` }}
-                            >
-                              {(lead.name || '??').slice(0, 2).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="font-semibold text-zinc-900 text-xs">{lead.name || 'Unknown'}</div>
-                              {lead.age && (
-                                <div className="text-[10px] text-zinc-400 mt-0.5">Age: {lead.age} • {lead.gender || '—'}</div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Contact */}
-                        <td className="px-4 py-3">
-                          <div className="flex flex-col gap-0.5">
-                            <div className="flex items-center gap-1 text-zinc-700">
-                              <Mail className="w-3 h-3 text-zinc-400" />
-                              <span className="truncate max-w-[160px]">{lead.email || '—'}</span>
-                            </div>
-                            <div className="flex items-center gap-1 text-zinc-500">
-                              <Phone className="w-3 h-3 text-zinc-400" />
-                              <span>{lead.phone ? `+971 ${lead.phone}` : '—'}</span>
-                            </div>
-                          </div>
-                        </td>
-
-                        {/* Category */}
-                        <td className="px-4 py-3">
-                          <span
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
-                            style={{ color: cat.color, backgroundColor: `${cat.color}15`, border: `1px solid ${cat.color}30` }}
-                          >
-                            {cat.emoji} {cat.label}
-                          </span>
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-4 py-3">
-                          <select
-                            value={lead.status}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              handleStatusChange(lead.id, e.target.value);
-                            }}
-                            className="px-2 py-1 rounded-md text-[10px] font-semibold border-0 cursor-pointer focus:outline-none"
-                            style={{ color: st.color, backgroundColor: `${st.bg}` }}
-                          >
-                            <option value="new" style={{ background: '#1e3a5f', color: '#3b82f6' }}>🆕 New</option>
-                            <option value="contacted" style={{ background: '#422006', color: '#f59e0b' }}>📞 Contacted</option>
-                            <option value="converted" style={{ background: '#064e3b', color: '#10b981' }}>✅ Converted</option>
-                            <option value="archived" style={{ background: '#1f2937', color: '#6b7280' }}>📦 Archived</option>
-                          </select>
-                        </td>
-
-                        {/* Date */}
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1 text-zinc-500">
-                            <Clock className="w-3 h-3" />
-                            <span>{formatDate(lead.submittedAt)}</span>
-                          </div>
-                        </td>
-
-                        {/* Actions */}
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center gap-1 justify-end">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedLead(lead);
-                              }}
-                              className="p-1.5 rounded-md hover:bg-zinc-100 text-zinc-500 hover:text-indigo-600 transition cursor-pointer"
-                              title="View Details"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setShowDeleteConfirm(lead.id);
-                              }}
-                              className="p-1.5 rounded-md hover:bg-red-50 text-zinc-500 hover:text-red-500 transition cursor-pointer"
-                              title="Delete Lead"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Detail Sidebar */}
-        {selectedLead && (
-          <div className="w-80 bg-white border border-zinc-200/90 rounded-xl overflow-hidden flex-shrink-0 flex flex-col">
-            {/* Detail Header */}
-            <div
-              className="p-4 border-b border-zinc-200/80 relative"
-              style={{ background: `linear-gradient(135deg, ${CATEGORY_CONFIG[selectedLead.category]?.color || '#6366f1'}10, white)` }}
-            >
-              <button
-                onClick={() => setSelectedLead(null)}
-                className="absolute top-3 right-3 p-1 rounded-md hover:bg-zinc-200/60 text-zinc-400 hover:text-zinc-700 transition cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-                  style={{ background: `linear-gradient(135deg, ${CATEGORY_CONFIG[selectedLead.category]?.color || '#6366f1'}, ${CATEGORY_CONFIG[selectedLead.category]?.color || '#6366f1'}aa)` }}
-                >
-                  {(selectedLead.name || '??').slice(0, 2).toUpperCase()}
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-zinc-900">{selectedLead.name || 'Unknown'}</h3>
-                  <span
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold mt-0.5"
-                    style={{
-                      color: CATEGORY_CONFIG[selectedLead.category]?.color,
-                      backgroundColor: `${CATEGORY_CONFIG[selectedLead.category]?.color}15`,
-                    }}
-                  >
-                    {CATEGORY_CONFIG[selectedLead.category]?.emoji} {CATEGORY_CONFIG[selectedLead.category]?.label}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Detail Body */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ scrollbarWidth: 'none' }}>
-              {/* Contact Info */}
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Contact Information</h4>
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2 p-2 bg-zinc-50 rounded-lg">
-                    <Mail className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
-                    <span className="text-xs text-zinc-700 break-all">{selectedLead.email || '—'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 p-2 bg-zinc-50 rounded-lg">
-                    <Phone className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-                    <span className="text-xs text-zinc-700">{selectedLead.phone ? `+971 ${selectedLead.phone}` : '—'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Extra Details */}
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Submission Details</h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {selectedLead.age && (
-                    <div className="p-2 bg-zinc-50 rounded-lg">
-                      <div className="text-[9px] text-zinc-400 uppercase font-medium">Age</div>
-                      <div className="text-xs font-semibold text-zinc-800">{selectedLead.age}</div>
-                    </div>
-                  )}
-                  {selectedLead.gender && (
-                    <div className="p-2 bg-zinc-50 rounded-lg">
-                      <div className="text-[9px] text-zinc-400 uppercase font-medium">Gender</div>
-                      <div className="text-xs font-semibold text-zinc-800">{selectedLead.gender}</div>
-                    </div>
-                  )}
-                  {selectedLead.programType && (
-                    <div className="p-2 bg-zinc-50 rounded-lg col-span-2">
-                      <div className="text-[9px] text-zinc-400 uppercase font-medium">Program</div>
-                      <div className="text-xs font-semibold text-zinc-800">{selectedLead.programType}</div>
-                    </div>
-                  )}
-                  {selectedLead.experience && (
-                    <div className="p-2 bg-zinc-50 rounded-lg col-span-2">
-                      <div className="text-[9px] text-zinc-400 uppercase font-medium">Experience</div>
-                      <div className="text-xs font-semibold text-zinc-800">{selectedLead.experience}</div>
-                    </div>
-                  )}
-                  {selectedLead.timeSlot && (
-                    <div className="p-2 bg-zinc-50 rounded-lg">
-                      <div className="text-[9px] text-zinc-400 uppercase font-medium">Time Slot</div>
-                      <div className="text-xs font-semibold text-zinc-800">{selectedLead.timeSlot}</div>
-                    </div>
-                  )}
-                  {selectedLead.ticketId && (
-                    <div className="p-2 bg-zinc-50 rounded-lg">
-                      <div className="text-[9px] text-zinc-400 uppercase font-medium">Ticket ID</div>
-                      <div className="text-xs font-mono font-semibold text-indigo-600">{selectedLead.ticketId}</div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Status Change */}
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Lead Status</h4>
-                <div className="flex gap-1.5 flex-wrap">
-                  {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                    <button
-                      key={key}
-                      onClick={() => handleStatusChange(selectedLead.id, key)}
-                      className={`px-2.5 py-1 rounded-md text-[10px] font-semibold border transition cursor-pointer ${
-                        selectedLead.status === key
-                          ? 'ring-2 ring-offset-1'
-                          : 'opacity-60 hover:opacity-100'
-                      }`}
-                      style={{
-                        color: cfg.color,
-                        backgroundColor: cfg.bg,
-                        borderColor: `${cfg.color}40`,
-                        ...(selectedLead.status === key ? { ringColor: cfg.color } : {}),
-                      }}
-                    >
-                      {cfg.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-2">
-                <h4 className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Notes</h4>
-                {selectedLead.notes && selectedLead.notes.length > 0 ? (
-                  <div className="space-y-1.5 max-h-32 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-                    {selectedLead.notes.map((n, i) => (
-                      <div key={i} className="p-2 bg-amber-50 border border-amber-200/60 rounded-lg">
-                        <p className="text-[11px] text-zinc-700">{n.text}</p>
-                        <p className="text-[9px] text-zinc-400 mt-1">{formatDate(n.createdAt)}</p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-[10px] text-zinc-400 italic">No notes added yet</p>
-                )}
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="Add a note..."
-                    value={noteText}
-                    onChange={(e) => setNoteText(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
-                    className="flex-1 px-2.5 py-1.5 text-[11px] bg-zinc-50 border border-zinc-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 text-zinc-800 placeholder:text-zinc-400"
-                  />
-                  <button
-                    onClick={handleAddNote}
-                    className="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition cursor-pointer"
-                  >
-                    <Send className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Submitted At */}
-              <div className="pt-2 border-t border-zinc-100">
-                <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-                  <Calendar className="w-3 h-3" />
-                  Submitted: {formatDate(selectedLead.submittedAt)}
-                </div>
-                <div className="text-[9px] text-zinc-300 font-mono mt-0.5">{selectedLead.id}</div>
-              </div>
-            </div>
-          </div>
+            <Download className="w-4 h-4" />
+            Download list
+          </button>
         )}
       </div>
 
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl border border-zinc-200">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-zinc-900">Delete This Lead?</h3>
-                <p className="text-[11px] text-zinc-500">This action cannot be undone.</p>
-              </div>
+      {/* Status tabs */}
+      <div className="flex flex-wrap gap-2">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            id={`trial-tab-${t.id}`}
+            onClick={() => setTab(t.id)}
+            className={`px-4 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer flex items-center gap-2 ${
+              tab === t.id ? 'bg-zinc-900 text-white' : 'bg-white ring-1 ring-zinc-200 text-zinc-700 hover:ring-zinc-400'
+            }`}
+          >
+            {t.label}
+            <span className={`min-w-[22px] px-1.5 py-0.5 rounded-full text-xs font-semibold ${tab === t.id ? 'bg-white/20' : 'bg-zinc-100 text-zinc-600'}`}>
+              {counts[t.id]}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Sport + search */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <input
+            type="text"
+            placeholder="Search name, phone or email"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full pl-10 pr-3 py-2.5 text-sm bg-white ring-1 ring-zinc-200 rounded-xl border-0 focus:outline-none focus:ring-2 focus:ring-zinc-900 text-zinc-800 placeholder:text-zinc-400"
+          />
+        </div>
+        <div className="flex gap-1 p-1 bg-zinc-100 rounded-xl self-start">
+          {SPORTS.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSport(s.id)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium cursor-pointer whitespace-nowrap ${sport === s.id ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-600 hover:text-zinc-900'}`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="bg-white ring-1 ring-zinc-200 rounded-2xl overflow-hidden">
+        {shown.length === 0 ? (
+          <div className="py-16 text-center px-6">
+            <div className="w-12 h-12 rounded-2xl bg-zinc-100 text-zinc-500 flex items-center justify-center mx-auto">
+              <Inbox className="w-6 h-6" />
             </div>
-            <div className="flex gap-2 justify-end mt-4">
-              <button
-                onClick={() => setShowDeleteConfirm(null)}
-                className="px-3 py-1.5 text-xs font-medium text-zinc-600 bg-zinc-100 hover:bg-zinc-200 rounded-lg transition cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleDelete(showDeleteConfirm)}
-                className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition cursor-pointer"
-              >
-                Delete Lead
-              </button>
-            </div>
+            <p className="text-base font-medium text-zinc-800 mt-3">
+              {leads.length === 0 ? 'No trial requests yet' : tab === 'new' ? 'Nobody waiting for a call 🎉' : 'Nothing here'}
+            </p>
+            <p className="text-sm text-zinc-500 mt-1">
+              {leads.length === 0
+                ? 'When someone books a free trial on your website, they show up here.'
+                : 'Try another tab or clear the search.'}
+            </p>
           </div>
+        ) : (
+          <ul className="divide-y divide-zinc-100">
+            {shown.map((lead) => (
+              <li key={lead.id} className="p-4 sm:px-5 flex flex-col lg:flex-row lg:items-center gap-3 lg:gap-4">
+                <button
+                  onClick={() => setOpenId(lead.id)}
+                  className="flex items-center gap-3.5 flex-1 min-w-0 text-left cursor-pointer group"
+                >
+                  <div className="w-11 h-11 rounded-full bg-zinc-100 flex items-center justify-center text-xl flex-shrink-0">
+                    {lead.category === 'basketball' ? '🏀' : '⛸️'}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-base font-semibold text-zinc-900 group-hover:underline">{lead.name || 'No name'}</p>
+                      <StatusPill status={lead.status} />
+                      <PaymentPill lead={lead} />
+                    </div>
+                    <p className="text-sm text-zinc-500 truncate">
+                      {formatPhone(lead.phone) || lead.email} · {timeAgo(lead.submittedAt)}
+                      {summary(lead) && <span className="hidden md:inline"> · {summary(lead)}</span>}
+                    </p>
+                  </div>
+                </button>
+
+                <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap sm:pl-[58px] lg:pl-0">
+                  <ContactButtons lead={lead} compact />
+                  <NextStep lead={lead} onChange={changeStatus} />
+                  <button
+                    onClick={() => setOpenId(lead.id)}
+                    className="hidden sm:inline-flex items-center gap-1 px-3 py-2 rounded-xl text-sm font-medium text-zinc-600 hover:bg-zinc-100 cursor-pointer"
+                  >
+                    Details <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Details drawer */}
+      {open && (
+        <div className="!m-0 fixed inset-0 z-[100] flex justify-end">
+          <div className="absolute inset-0 bg-black/30" onClick={() => { setOpenId(null); setConfirmDelete(false); }} />
+          <aside className="relative w-full max-w-md h-full bg-white shadow-2xl flex flex-col">
+            <div className="p-5 border-b border-zinc-100 flex items-start gap-3">
+              <div className="w-12 h-12 rounded-full bg-zinc-100 flex items-center justify-center text-2xl flex-shrink-0">
+                {open.category === 'basketball' ? '🏀' : '⛸️'}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-semibold text-zinc-900">{open.name || 'No name'}</h2>
+                <p className="text-sm text-zinc-500">
+                  {open.category === 'basketball' ? 'Basketball' : 'Skating'} trial · {fullDate(open.submittedAt)}
+                </p>
+              </div>
+              <button
+                onClick={() => { setOpenId(null); setConfirmDelete(false); }}
+                className="p-2 rounded-lg text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              <section className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  <ContactButtons lead={open} />
+                </div>
+                <div className="text-sm text-zinc-700 space-y-1">
+                  {open.phone && <p>📞 {formatPhone(open.phone)}</p>}
+                  {open.email && <p className="break-all">✉️ {open.email}</p>}
+                </div>
+              </section>
+
+              <section>
+                <h3 className="text-sm font-semibold text-zinc-900 mb-2">Status</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(STATUS).map(([key, st]) => (
+                    <button
+                      key={key}
+                      onClick={() => changeStatus(open.id, key)}
+                      className={`px-3 py-2.5 rounded-xl text-sm font-medium ring-1 cursor-pointer transition ${
+                        (open.status || 'new') === key ? `${st.pill} ring-2` : 'ring-zinc-200 text-zinc-600 hover:bg-zinc-50'
+                      }`}
+                    >
+                      {(open.status || 'new') === key && '✓ '}
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {summary(open) && (
+                <section>
+                  <h3 className="text-sm font-semibold text-zinc-900 mb-2">What they told us</h3>
+                  <dl className="text-sm divide-y divide-zinc-100 ring-1 ring-zinc-200 rounded-xl">
+                    {[
+                      ['Age', open.age],
+                      ['Gender', open.gender],
+                      ['Program', open.programType],
+                      ['Experience', open.experience],
+                      ['Trial fee', open.paymentStatus === 'paid' ? 'Paid online (30 AED)' : open.paymentStatus === 'pending' ? 'Went to payment, not finished' : null],
+                      ['Age group', open.ageGroup],
+                      ['Location', open.location],
+                      ['Preferred time', open.timeSlot],
+                      ['Skate size', open.skateSize],
+                      ['Needs equipment', open.needsEquipment === undefined ? null : open.needsEquipment ? 'Yes' : 'No'],
+                      ['Booking code', open.ticketId],
+                    ]
+                      .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                      .map(([k, v]) => (
+                        <div key={k} className="flex justify-between gap-4 px-3.5 py-2.5">
+                          <dt className="text-zinc-500">{k}</dt>
+                          <dd className="text-zinc-900 font-medium text-right capitalize">{String(v)}</dd>
+                        </div>
+                      ))}
+                  </dl>
+                </section>
+              )}
+
+              <section>
+                <h3 className="text-sm font-semibold text-zinc-900 mb-2">Notes</h3>
+                {(open.notes || []).length > 0 && (
+                  <ul className="space-y-2 mb-3">
+                    {open.notes.map((n, i) => (
+                      <li key={i} className="p-3 bg-amber-50 rounded-xl text-sm text-zinc-800">
+                        {n.text}
+                        <span className="block text-xs text-zinc-400 mt-1">{fullDate(n.createdAt)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="e.g. Coming Saturday with her brother"
+                    value={noteText}
+                    onChange={(e) => setNoteText(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && saveNote()}
+                    className="flex-1 px-3.5 py-2.5 text-sm ring-1 ring-zinc-200 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                  />
+                  <button
+                    onClick={saveNote}
+                    disabled={!noteText.trim()}
+                    className="px-3.5 rounded-xl bg-zinc-900 text-white disabled:opacity-40 cursor-pointer"
+                    title="Save note"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              </section>
+            </div>
+
+            <div className="p-4 border-t border-zinc-100">
+              {confirmDelete ? (
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm text-zinc-700">Delete this request for good?</span>
+                  <div className="flex gap-2">
+                    <button onClick={() => setConfirmDelete(false)} className="px-3.5 py-2 rounded-xl text-sm ring-1 ring-zinc-200 cursor-pointer">
+                      Keep
+                    </button>
+                    <button onClick={() => remove(open.id)} className="px-3.5 py-2 rounded-xl text-sm bg-rose-600 text-white cursor-pointer">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="inline-flex items-center gap-2 text-sm text-rose-600 hover:text-rose-700 cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" /> Delete request
+                </button>
+              )}
+            </div>
+          </aside>
         </div>
       )}
     </div>

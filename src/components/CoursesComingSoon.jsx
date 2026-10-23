@@ -28,6 +28,27 @@ export default function CoursesComingSoon({ navigateTo }) {
   const [typed, setTyped] = useState(0);
   const typingDone = typed >= TITLE.length;
 
+  // Lock the page: no scrolling or rubber-band bounce while this screen is open
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prev = {
+      htmlOverflow: html.style.overflow, bodyOverflow: body.style.overflow,
+      htmlOverscroll: html.style.overscrollBehavior, bodyOverscroll: body.style.overscrollBehavior,
+    };
+    window.scrollTo(0, 0);
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    html.style.overscrollBehavior = 'none';
+    body.style.overscrollBehavior = 'none';
+    return () => {
+      html.style.overflow = prev.htmlOverflow;
+      body.style.overflow = prev.bodyOverflow;
+      html.style.overscrollBehavior = prev.htmlOverscroll;
+      body.style.overscrollBehavior = prev.bodyOverscroll;
+    };
+  }, []);
+
   // Typewriter
   useEffect(() => {
     let timer;
@@ -210,8 +231,15 @@ export default function CoursesComingSoon({ navigateTo }) {
     const ro = new ResizeObserver(resize);
     ro.observe(wrap);
     wrap.addEventListener('mousemove', pm);
-    wrap.addEventListener('touchmove', tm, { passive: true });
+    const tmBlock = (e) => {
+      if (e.target.closest && e.target.closest('button')) return;
+      if (e.cancelable) e.preventDefault();
+      tm(e);
+    };
+    wrap.addEventListener('touchmove', tmBlock, { passive: false });
     wrap.addEventListener('touchstart', tm, { passive: true });
+    const wheelBlock = (e) => e.preventDefault();
+    wrap.addEventListener('wheel', wheelBlock, { passive: false });
     wrap.addEventListener('mouseleave', leave);
     raf = requestAnimationFrame(frame);
 
@@ -219,7 +247,8 @@ export default function CoursesComingSoon({ navigateTo }) {
       cancelAnimationFrame(raf);
       ro.disconnect();
       wrap.removeEventListener('mousemove', pm);
-      wrap.removeEventListener('touchmove', tm);
+      wrap.removeEventListener('touchmove', tmBlock);
+      wrap.removeEventListener('wheel', wheelBlock);
       wrap.removeEventListener('touchstart', tm);
       wrap.removeEventListener('mouseleave', leave);
       engineRef.current = null;
@@ -242,8 +271,9 @@ export default function CoursesComingSoon({ navigateTo }) {
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&display=swap');
 
         .cs-wrap {
-          position: relative; overflow: hidden;
-          min-height: 100vh; min-height: 100dvh;
+          position: fixed; inset: 0; z-index: 60; overflow: hidden;
+          height: 100vh; height: 100dvh;
+          touch-action: none; overscroll-behavior: none;
           display: flex; align-items: center; justify-content: center;
           padding: 40px 20px; color: #ffffff; text-align: center;
           background: #000000;

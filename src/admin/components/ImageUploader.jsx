@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, Image as ImageIcon, Link as LinkIcon, Loader2, Check, Sparkles } from 'lucide-react';
+import { Upload, X, Link as LinkIcon, Loader2, Check, Crop } from 'lucide-react';
 import { adminApi } from '../services/adminApi';
+import ImageCropper, { readFileAsDataUrl, storeCroppedImage } from './ImageCropper';
 
 /**
  * Client-side canvas image compression helper:
@@ -57,7 +58,10 @@ export default function ImageUploader({
   label = 'Image Asset',
   hint = 'PNG, JPG, WEBP, SVG — Click or drag to upload from your computer',
   aspectRatio = 'aspect-video',
+  cropShape = 'original',
+  cropShapes = ['original', 'square', 'landscape', 'portrait', 'wide', 'banner'],
 }) {
+  const [crop, setCrop] = useState(null); // { src, file } while the crop window is open
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
@@ -65,7 +69,32 @@ export default function ImageUploader({
   const [urlInput, setUrlInput] = useState('');
   const fileInputRef = useRef(null);
 
+  // Every new picture goes through the crop window first
   const handleFileUpload = async (file) => {
+    if (!file) return;
+    if (!file.type?.startsWith('image/')) {
+      setError('Please choose a picture file (JPG, PNG or WEBP).');
+      return;
+    }
+    setError('');
+    try {
+      setCrop({ src: await readFileAsDataUrl(file), file });
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleCropped = async (dataUrl) => {
+    const name = crop?.file?.name || 'banner.jpg';
+    setCrop(null);
+    setLoading(true);
+    onChange(await storeCroppedImage(dataUrl, name));
+    setLoading(false);
+  };
+
+  // "Use the full photo": the original upload path, unchanged
+  const uploadOriginal = async (file) => {
+    setCrop(null);
     if (!file) return;
     setError('');
     setLoading(true);
@@ -200,6 +229,15 @@ export default function ImageUploader({
 
               <button
                 type="button"
+                onClick={() => setCrop({ src: value, file: null })}
+                className="px-2.5 py-1.5 bg-white hover:bg-zinc-50 text-zinc-800 rounded-md text-[11px] font-semibold flex items-center gap-1.5 transition cursor-pointer border border-zinc-300"
+              >
+                <Crop className="w-3.5 h-3.5" />
+                <span>Crop</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setShowUrlInput(!showUrlInput)}
                 className="px-2.5 py-1.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-md text-[11px] font-medium flex items-center gap-1.5 transition cursor-pointer border border-zinc-200"
               >
@@ -327,11 +365,25 @@ export default function ImageUploader({
         ref={fileInputRef}
         type="file"
         accept="image/*"
-        onChange={(e) => e.target.files?.[0] && handleFileUpload(e.target.files[0])}
+        onChange={(e) => {
+          if (e.target.files?.[0]) handleFileUpload(e.target.files[0]);
+          e.target.value = '';
+        }}
         className="hidden"
       />
 
       {error && <p className="text-xs text-rose-500 font-medium">{error}</p>}
+
+      {crop && (
+        <ImageCropper
+          src={crop.src}
+          shape={cropShape}
+          shapes={cropShapes}
+          onDone={handleCropped}
+          onCancel={() => setCrop(null)}
+          onSkip={crop.file ? () => uploadOriginal(crop.file) : undefined}
+        />
+      )}
     </div>
   );
 }

@@ -1,12 +1,36 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import Modal from '../../components/Modal';
-import { Printer, Download, CheckCircle2 } from 'lucide-react';
+import { Printer } from 'lucide-react';
 
 export default function PrintInvoiceModal({ isOpen, onClose, order }) {
+  const invoiceRef = useRef(null);
   if (!order) return null;
 
+  // Print only the invoice: copy it into a hidden frame with the page styles, on a white page.
+  // (window.print() on its own printed the whole admin screen behind the pop-up.)
   const handlePrint = () => {
-    window.print();
+    const node = invoiceRef.current;
+    if (!node) return;
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+    document.body.appendChild(iframe);
+    const styles = [...document.querySelectorAll('style, link[rel="stylesheet"]')].map((n) => n.outerHTML).join('');
+    const doc = iframe.contentDocument;
+    doc.open();
+    doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>Invoice ${order.orderNumber}</title>${styles}
+      <style>
+        html, body { background: #fff !important; color: #18181b !important; margin: 0; min-height: 0 !important; }
+        .print-hide { display: none !important; }
+        @page { margin: 12mm; }
+      </style></head><body class="admin-root">${node.outerHTML}</body></html>`);
+    doc.close();
+    const cleanup = () => setTimeout(() => iframe.remove(), 500);
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      cleanup();
+    }, 400); // give the copied styles a moment to apply
   };
 
   const subtotalAed = order.subtotalFils ? (order.subtotalFils / 100).toFixed(2) : '0.00';
@@ -18,11 +42,11 @@ export default function PrintInvoiceModal({ isOpen, onClose, order }) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`TAX INVOICE — ${order.orderNumber}`}
-      subtitle="Official STRATEGY UAE Tax Invoice Document"
+      title={`Invoice ${order.orderNumber}`}
+      subtitle="Tax invoice ready to print"
       maxWidth="max-w-3xl"
     >
-      <div className="space-y-6 text-zinc-900 bg-white p-6 sm:p-8 rounded-2xl border border-zinc-200/90 shadow-none font-['Plus_Jakarta_Sans',sans-serif] print:border-none print:p-0">
+      <div ref={invoiceRef} className="space-y-6 text-zinc-900 bg-white p-6 sm:p-8 rounded-2xl border border-zinc-200/90 shadow-none font-['Plus_Jakarta_Sans',sans-serif]">
         {/* Invoice Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-200 pb-5">
           <div className="flex items-center gap-3">
@@ -59,7 +83,7 @@ export default function PrintInvoiceModal({ isOpen, onClose, order }) {
           <div className="bg-zinc-50/70 p-3.5 rounded-xl space-y-1.5 border border-zinc-200/80">
             <p className="font-medium text-zinc-400 uppercase tracking-wider text-[10px]">Payment & Shipping Info:</p>
             <p className="text-zinc-600">Payment Method: <strong className="text-zinc-900 font-medium">{order.paymentMethod}</strong></p>
-            <p className="text-zinc-600">Payment Status: <strong className="text-emerald-700 uppercase font-medium">{order.paymentStatus}</strong></p>
+            <p className="text-zinc-600">Payment Status: <strong className={`uppercase font-medium ${order.paymentStatus === 'paid' ? 'text-emerald-700' : 'text-amber-700'}`}>{order.paymentStatus === 'paid' ? 'Paid' : 'Not paid yet'}</strong></p>
             <p className="text-zinc-600">Carrier: <strong className="text-zinc-900 font-medium">{order.courierName || 'Emirates Post'}</strong></p>
             <p className="text-zinc-600">Tracking #: <strong className="text-zinc-900 font-mono font-medium">{order.trackingNumber || 'N/A'}</strong></p>
           </div>
@@ -123,7 +147,7 @@ export default function PrintInvoiceModal({ isOpen, onClose, order }) {
         </div>
 
         {/* Print Buttons */}
-        <div className="pt-2 flex justify-end gap-2.5 print:hidden">
+        <div className="pt-2 flex justify-end gap-2.5 print-hide">
           <button
             onClick={onClose}
             className="px-3.5 py-1.5 border border-zinc-200 hover:bg-zinc-50 text-zinc-700 font-medium text-xs rounded-lg transition"

@@ -5,7 +5,7 @@ import ConfirmDialog from '../../components/ConfirmDialog';
 import ProductFormModal from './ProductFormModal';
 import BulkStockEditorModal from './BulkStockEditorModal';
 import StockControl from '../../components/StockControl';
-import { productsData } from '../../../data/products';
+import { loadProducts } from '../../services/storeData';
 import {
   Package,
   Plus,
@@ -34,45 +34,8 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
 
   const fetchProducts = async () => {
     setLoading(true);
-    try {
-      const token = localStorage.getItem('strategy_admin_token');
-      const response = await fetch('http://localhost:5000/api/v1/admin/products');
-      const result = await response.json();
-      if (result.success && result.data?.products?.length) {
-        setProducts(result.data.products);
-      } else {
-        throw new Error('API products fallback');
-      }
-    } catch (err) {
-      console.warn('Backend API connection fallback, loading local seed data:', err.message);
-      // Map local products to standardized schema
-      const mapped = productsData.map((p) => ({
-        id: p.id,
-        name: p.name,
-        slug: p.slug,
-        sku: p.sku || `STR-${p.id.toUpperCase()}`,
-        category: p.category || 'General',
-        sport: p.sport || 'General',
-        gender: p.gender || 'unisex',
-        priceFils: Math.round((p.price || 49.99) * 100),
-        salePriceFils: Math.round((p.price || 49.99) * 100),
-        costPriceFils: Math.round((p.price || 49.99) * 50),
-        images: p.images || ['/images/strategy_basketball_ball.jpg'],
-        image: p.images?.[0] || '/images/strategy_basketball_ball.jpg',
-        description: p.description || '',
-        stockQuantity: p.stock ?? 25,
-        lowStockThreshold: 5,
-        isFeatured: !!p.isFeatured,
-        isBestSeller: !!p.isBestSeller,
-        isNewArrival: !!p.isNew,
-        isSpecialEdition: !!p.isSpecialEdition,
-        status: 'published',
-        variants: [],
-      }));
-      setProducts(mapped);
-    } finally {
-      setLoading(false);
-    }
+    setProducts(await loadProducts());
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -211,7 +174,7 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
       ),
     },
     {
-      header: 'Price (AED)',
+      header: 'Price',
       accessor: 'priceFils',
       sortable: true,
       align: 'right',
@@ -221,7 +184,7 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
       },
     },
     {
-      header: 'Stock Level',
+      header: 'Stock',
       accessor: 'stockQuantity',
       sortable: true,
       align: 'center',
@@ -251,7 +214,7 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
       render: (val) => <StatusBadge status={val} size="sm" />,
     },
     {
-      header: 'Actions',
+      header: '',
       accessor: 'id',
       sortable: false,
       align: 'right',
@@ -259,17 +222,17 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => handleEditProduct(row)}
-            title="Edit Product"
-            className="p-1.5 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-md transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-zinc-800 ring-1 ring-zinc-200 hover:bg-zinc-50 rounded-lg cursor-pointer"
           >
-            <Edit className="w-3.5 h-3.5" />
+            <Edit className="w-4 h-4" />
+            Edit
           </button>
           <button
             onClick={() => setDeleteProductTarget(row)}
-            title="Archive Product"
-            className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+            title="Delete product"
+            className="p-2 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
       ),
@@ -280,8 +243,12 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
     <div className="space-y-6">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed top-16 right-6 z-[100] bg-zinc-900 text-white px-3.5 py-2 rounded-lg shadow-lg flex items-center gap-2 font-medium text-xs">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+        <div
+          className={`!m-0 fixed top-20 right-6 z-[100] max-w-md text-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 font-medium text-sm ${
+            /offline|not saved/i.test(toastMessage) ? 'bg-amber-700' : 'bg-zinc-900'
+          }`}
+        >
+          {!/offline|not saved/i.test(toastMessage) && <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
           <span>{toastMessage}</span>
         </div>
       )}
@@ -289,13 +256,7 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-lg sm:text-xl font-semibold text-zinc-900 tracking-tight flex items-center gap-2">
-            <Package className="w-5 h-5 text-zinc-500" />
-            <span>Product & Inventory Management</span>
-          </h1>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            Manage your full product catalog, SKUs, inventory stock alerts, prices, and variants.
-          </p>
+          <p className="text-base text-zinc-500">Everything you sell in the shop. Use + and − to update stock quickly.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -304,7 +265,7 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
             className="px-3 py-1.5 bg-white hover:bg-zinc-50 border border-zinc-200 text-zinc-700 font-medium text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Sliders className="w-3.5 h-3.5 text-zinc-500" />
-            <span>Rapid Stock Matrix</span>
+            <span>Edit all stock</span>
           </button>
 
           <button
@@ -312,7 +273,7 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
             className="px-3 py-1.5 bg-zinc-900 hover:bg-black text-white font-medium text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Add New Product</span>
+            <span>Add a product</span>
           </button>
         </div>
       </div>
@@ -321,7 +282,7 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className="p-4 bg-white border border-zinc-200/90 rounded-xl flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Total Catalog</p>
+            <p className="text-sm text-zinc-500">All products</p>
             <p className="text-xl font-semibold text-zinc-900 mt-0.5">{totalProducts} Products</p>
           </div>
           <div className="w-8 h-8 rounded-lg bg-zinc-100 text-zinc-700 flex items-center justify-center">
@@ -331,7 +292,7 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
 
         <div className="p-4 bg-white border border-zinc-200/90 rounded-xl flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Published Live</p>
+            <p className="text-sm text-zinc-500">On the website</p>
             <p className="text-xl font-semibold text-zinc-900 mt-0.5">{publishedCount} Items</p>
           </div>
           <div className="w-8 h-8 rounded-lg bg-zinc-100 text-zinc-700 flex items-center justify-center">
@@ -341,7 +302,7 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
 
         <div className="p-4 bg-white border border-zinc-200/90 rounded-xl flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Low Stock Warnings</p>
+            <p className="text-sm text-zinc-500">Running low</p>
             <p className="text-xl font-semibold text-zinc-900 mt-0.5">{lowStockCount} Products</p>
           </div>
           <div className="w-8 h-8 rounded-lg bg-zinc-100 text-zinc-700 flex items-center justify-center">
@@ -351,7 +312,7 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
 
         <div className="p-4 bg-white border border-zinc-200/90 rounded-xl flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider">Stock Retail Value</p>
+            <p className="text-sm text-zinc-500">Stock value</p>
             <p className="text-xl font-semibold text-zinc-900 mt-0.5">
               AED {(totalStockValFils / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })}
             </p>
@@ -442,10 +403,30 @@ export default function ProductsView({ onAddNewProduct, onEditProduct }) {
         isOpen={isBulkEditorOpen}
         onClose={() => setIsBulkEditorOpen(false)}
         products={products}
-        onSaveSuccess={(updatedList) => {
-          fetchProducts();
-          setToastMessage('Bulk matrix stock & prices saved.');
-          setTimeout(() => setToastMessage(''), 3000);
+        onSaveSuccess={(changedList, serverOk) => {
+          // Keep the edits on screen (re-loading would throw them away when the server is offline)
+          setProducts((prev) =>
+            prev.map((p) => {
+              const c = changedList.find((x) => x.id === p.id);
+              if (!c) return p;
+              const priceFils = Math.round(parseFloat(c.priceAed || 0) * 100);
+              const hadNoSale = !p.salePriceFils || p.salePriceFils === p.priceFils;
+              return {
+                ...p,
+                stockQuantity: c.stockQuantity,
+                stock: c.stockQuantity,
+                priceFils,
+                salePriceFils: hadNoSale ? priceFils : p.salePriceFils,
+                status: c.status,
+              };
+            })
+          );
+          setToastMessage(
+            serverOk
+              ? `Saved ${changedList.length} product${changedList.length === 1 ? '' : 's'}.`
+              : 'Shown here only: the shop server is offline, so these changes are not stored.'
+          );
+          setTimeout(() => setToastMessage(''), serverOk ? 3000 : 6000);
         }}
       />
 

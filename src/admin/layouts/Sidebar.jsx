@@ -1,284 +1,180 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  LayoutDashboard,
+  Home,
   Package,
   FolderTree,
-  Layers,
-  Home,
-  Image as ImageIcon,
   ShoppingBag,
   Users,
-  Ticket,
-  GraduationCap,
-  Star,
-  Menu,
   Settings as SettingsIcon,
-  ShieldCheck,
-  FileText,
+  GraduationCap,
+  Image as ImageIcon,
+  Inbox,
   ChevronLeft,
   ExternalLink,
-  HelpCircle,
+  LogOut,
   Plus,
-  Contact
 } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { StrategyIcon } from '../../components/StrategyLogo';
+import { getAllTrialLeads } from '../../utils/trialLeadsData';
 
-export default function Sidebar({
-  activeTab,
-  setActiveTab,
-  collapsed,
-  setCollapsed,
-  workspace,
-  setWorkspace,
-  onAddNewProduct
-}) {
-  const { admin } = useAdminAuth();
-  const isSuperAdmin = admin?.role === 'super_admin';
+// Short, plain-language menus. Each login only sees what it needs.
+export const STORE_MENU = [
+  { id: 'dashboard', label: 'Home', icon: Home },
+  { id: 'products', label: 'Products', icon: Package },
+  { id: 'categories', label: 'Categories', icon: FolderTree },
+  { id: 'orders', label: 'Orders', icon: ShoppingBag },
+  { id: 'customers', label: 'Customers', icon: Users },
+  { id: 'settings', label: 'Shop settings', icon: SettingsIcon },
+];
+
+export const ACADEMY_MENU = [
+  { id: 'dashboard', label: 'Home', icon: Home },
+  { id: 'trial-leads', label: 'Trial requests', icon: Inbox, badgeKey: 'newLeads' },
+  { id: 'academy', label: 'Packages & prices', icon: GraduationCap },
+  { id: 'galleries', label: 'Photo gallery', icon: ImageIcon },
+];
+
+function useNewLeadsCount() {
+  const count = () => getAllTrialLeads().filter((l) => l.status === 'new').length;
+  const [n, setN] = useState(count);
+  useEffect(() => {
+    const refresh = () => setN(count());
+    window.addEventListener('strategy_trial_lead_added', refresh);
+    window.addEventListener('strategy_trial_leads_changed', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('strategy_trial_lead_added', refresh);
+      window.removeEventListener('strategy_trial_leads_changed', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, []);
+  return n;
+}
+
+export default function Sidebar({ activeTab, setActiveTab, collapsed, setCollapsed, onAddNewProduct }) {
+  const { admin, logout } = useAdminAuth();
   const isStoreAdmin = admin?.role === 'store_admin';
+  const newLeads = useNewLeadsCount();
 
-  // E-Commerce Navigation Groups for Store Admin
-  const storeNavigationGroups = [
-    {
-      title: 'OVERVIEW',
-      items: [
-        { id: 'dashboard', label: 'Store Dashboard', icon: LayoutDashboard },
-      ]
-    },
-    {
-      title: 'CATALOG & INVENTORY',
-      items: [
-        { id: 'products', label: 'Products & Stock', icon: Package, badge: '24' },
-        { id: 'categories', label: 'Categories Tree', icon: FolderTree },
-        { id: 'collections', label: 'Collections & Rules', icon: Layers },
-      ]
-    },
-    {
-      title: 'SALES & LOGISTICS',
-      items: [
-        { id: 'orders', label: 'Orders & Shipping', icon: ShoppingBag, badge: '5' },
-        { id: 'customers', label: 'Customer Directory', icon: Users },
-        { id: 'coupons', label: 'Coupons & Offers', icon: Ticket },
-      ]
-    },
-    {
-      title: 'CUSTOMER REPUTATION',
-      items: [
-        { id: 'reviews', label: 'Product Reviews', icon: Star, badge: '6' },
-      ]
-    },
-    {
-      title: 'STORE CONFIGURATION',
-      items: [
-        { id: 'settings', label: 'Shipping & Tax Settings', icon: SettingsIcon },
-      ]
-    }
-  ];
+  const menu = isStoreAdmin ? STORE_MENU : ACADEMY_MENU;
+  const badges = { newLeads };
+  const websiteHref = isStoreAdmin ? '/#shop' : '/#home';
 
-  // Platform & Academy Navigation Groups for Admin
-  const platformNavigationGroups = [
-    {
-      title: 'EXECUTIVE OVERVIEW',
-      items: [
-        { id: 'dashboard', label: 'Platform Dashboard', icon: LayoutDashboard },
-      ]
-    },
-    {
-      title: 'ACADEMY & PACKAGES',
-      items: [
-        { id: 'academy', label: 'Packages & Bookings', icon: GraduationCap, badge: '3' },
-      ]
-    },
-    {
-      title: 'CONTENT & MARKETING',
-      items: [
-        { id: 'homepage', label: 'Homepage Builder', icon: Home },
-        { id: 'galleries', label: 'Gallery', icon: ImageIcon },
-        { id: 'navigation', label: 'Navbar & Footer', icon: Menu },
-        { id: 'faqs', label: 'FAQs & Content', icon: HelpCircle },
-      ]
-    },
-    {
-      title: 'TRIAL LEADS & CRM',
-      items: [
-        { id: 'trial-leads', label: 'Trial Registrations', icon: Contact },
-      ]
-    },
-    {
-      title: 'SECURITY & GOVERNANCE',
-      items: [
-        { id: 'users', label: 'Admin RBAC Users', icon: ShieldCheck },
-        { id: 'audit', label: 'System Audit Logs', icon: FileText },
-        { id: 'settings', label: 'Platform Settings', icon: SettingsIcon },
-      ]
-    }
-  ];
-
-  // Determine active navigation groups
-  const navigationGroups = isStoreAdmin
-    ? storeNavigationGroups
-    : platformNavigationGroups;
+  const itemBase =
+    'w-full flex items-center gap-3 rounded-xl text-sm transition-colors relative group cursor-pointer';
+  const itemPad = collapsed ? 'justify-center p-2.5' : 'px-3 py-2.5';
 
   return (
     <aside
-      className={`fixed top-0 left-0 bottom-0 z-40 bg-zinc-950 border-r border-zinc-800/80 transition-all duration-300 flex flex-col overflow-hidden ${
+      className={`fixed top-0 left-0 bottom-0 z-40 bg-zinc-950 border-r border-zinc-800/80 transition-all duration-300 flex flex-col ${
         collapsed ? 'w-16' : 'w-60'
       }`}
     >
-      {/* Brand Header */}
-      <div className="h-14 px-3 border-b border-zinc-800/80 flex items-center justify-between flex-shrink-0">
+      {/* Brand */}
+      <div className="h-16 px-3 border-b border-zinc-800/80 flex items-center justify-between flex-shrink-0">
         {!collapsed ? (
           <>
-            <div className="flex items-center gap-2.5 min-w-0">
-              <StrategyIcon className="w-6 h-6 flex-shrink-0" />
+            <div className="flex items-center gap-2.5 min-w-0 pl-1">
+              <StrategyIcon className="w-7 h-7 flex-shrink-0" />
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-semibold tracking-wider text-white text-xs block truncate">STRATEGY</span>
-                  {isStoreAdmin && (
-                    <span className="text-[9px] font-semibold text-emerald-400 bg-emerald-950/80 border border-emerald-800/60 px-1 py-0.2 rounded">
-                      STORE
-                    </span>
-                  )}
-                  {isSuperAdmin && (
-                    <span className="text-[9px] font-semibold text-indigo-400 bg-indigo-950/80 border border-indigo-800/60 px-1 py-0.2 rounded">
-                      ADMIN
-                    </span>
-                  )}
-                </div>
-                <span className="text-[9px] font-medium text-zinc-500 block -mt-0.5 truncate">
-                  {isStoreAdmin ? 'E-Commerce Control' : 'Admin Control Center'}
+                <span className="font-semibold tracking-wider text-white text-sm block">STRATEGY</span>
+                <span className="text-xs text-zinc-400 block -mt-0.5">
+                  {isStoreAdmin ? 'Shop admin' : 'Academy admin'}
                 </span>
               </div>
             </div>
-
             <button
               id="sidebar-collapse-button"
               onClick={() => setCollapsed(true)}
-              className="p-1 rounded-md text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-colors flex-shrink-0 cursor-pointer"
-              title="Collapse Sidebar"
+              className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-colors cursor-pointer"
+              title="Hide menu labels"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
           </>
         ) : (
           <button
             id="sidebar-expand-button"
             onClick={() => setCollapsed(false)}
-            className="w-8 h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 flex items-center justify-center mx-auto transition cursor-pointer border border-zinc-800"
-            title="Expand Sidebar"
+            className="w-10 h-10 rounded-xl bg-zinc-900 hover:bg-zinc-800 flex items-center justify-center mx-auto transition cursor-pointer border border-zinc-800"
+            title="Show menu"
           >
             <StrategyIcon className="w-5 h-5" />
           </button>
         )}
       </div>
 
-      {/* Nav List */}
-      <div 
-        className="flex-1 overflow-y-auto px-2.5 py-3 space-y-5 scrollbar-none no-scrollbar"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-      >
-        {/* Store Admin Action Button (+ Add New Product) - Hidden on Admin */}
+      {/* Menu */}
+      <nav className="flex-1 overflow-y-auto px-2.5 py-4 space-y-1">
         {isStoreAdmin && (
-          <div className="mb-3">
-            {!collapsed ? (
-              <button
-                id="sidebar-royal-add-product-btn"
-                type="button"
-                onClick={onAddNewProduct}
-                className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold border border-dashed transition-all cursor-pointer shadow-xs group ${
-                  activeTab === 'product-add'
-                    ? 'border-emerald-400 bg-zinc-800 text-white ring-1 ring-emerald-400/50'
-                    : 'border-zinc-700 hover:border-emerald-400 bg-zinc-900/70 hover:bg-zinc-800 text-zinc-200 hover:text-white'
-                }`}
-                title="Create New Product (Variants & Size Presets)"
-              >
-                <Plus className="w-3.5 h-3.5 text-emerald-400 group-hover:scale-110 transition-transform" />
-                <span>+ Add New Product</span>
-              </button>
-            ) : (
-              <button
-                id="sidebar-royal-add-product-btn-collapsed"
-                type="button"
-                onClick={onAddNewProduct}
-                className={`w-8 h-8 mx-auto flex items-center justify-center rounded-lg border border-dashed transition cursor-pointer ${
-                  activeTab === 'product-add'
-                    ? 'border-emerald-400 bg-zinc-800 text-white'
-                    : 'border-zinc-700 hover:border-emerald-400 bg-zinc-900 text-emerald-400 hover:text-white'
-                }`}
-                title="Add New Product"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-            )}
-          </div>
+          <button
+            id="sidebar-add-product-btn"
+            type="button"
+            onClick={onAddNewProduct}
+            title="Add a product"
+            className={`${itemBase} ${itemPad} mb-3 font-semibold bg-white text-zinc-950 hover:bg-zinc-200`}
+          >
+            <Plus className="w-[18px] h-[18px] flex-shrink-0" />
+            {!collapsed && <span>Add a product</span>}
+          </button>
         )}
 
-        {navigationGroups.map((group, gIdx) => (
-          <div key={gIdx} className="space-y-0.5">
-            {!collapsed && (
-              <p className="px-2.5 text-[10px] font-medium tracking-wider text-zinc-500 uppercase mb-1">
-                {group.title}
-              </p>
-            )}
-
-            {group.items.map((item) => {
-              const isActive = activeTab === item.id;
-              const Icon = item.icon;
-
-              return (
-                <button
-                  key={item.id}
-                  id={`nav-item-${item.id}`}
-                  onClick={() => setActiveTab(item.id)}
-                  title={collapsed ? item.label : undefined}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors relative group cursor-pointer ${
-                    isActive
-                      ? 'bg-zinc-800 text-white font-medium'
-                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60 font-normal'
-                  }`}
+        {menu.map((item) => {
+          const isActive = activeTab === item.id || (item.id === 'products' && activeTab === 'product-add');
+          const Icon = item.icon;
+          const badge = item.badgeKey ? badges[item.badgeKey] : 0;
+          return (
+            <button
+              key={item.id}
+              id={`nav-item-${item.id}`}
+              onClick={() => setActiveTab(item.id)}
+              title={collapsed ? item.label : undefined}
+              className={`${itemBase} ${itemPad} ${
+                isActive
+                  ? 'bg-zinc-800 text-white font-medium'
+                  : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+              }`}
+            >
+              <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+              {!collapsed && <span className="flex-1 text-left truncate">{item.label}</span>}
+              {badge > 0 && (
+                <span
+                  className={
+                    collapsed
+                      ? 'absolute top-1 right-1 w-2.5 h-2.5 rounded-full bg-blue-500'
+                      : 'min-w-[22px] px-1.5 py-0.5 text-xs font-semibold rounded-full bg-blue-500 text-white text-center'
+                  }
                 >
-                  <Icon className={`w-3.5 h-3.5 stroke-[1.75] flex-shrink-0 ${isActive ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`} />
+                  {collapsed ? '' : badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
 
-                  {!collapsed && (
-                    <span className="truncate flex-1 text-left">{item.label}</span>
-                  )}
-
-                  {!collapsed && item.badge && (
-                    <span
-                      className={`px-1.5 py-0.2 text-[9px] font-medium rounded ${
-                        isActive ? 'bg-zinc-700 text-white' : 'bg-zinc-900 text-zinc-400'
-                      }`}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-
-                  {collapsed && (
-                    <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-900 text-white text-[11px] font-medium rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition z-50 border border-zinc-800">
-                      {item.label}
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-
-      {/* Sidebar Footer */}
-      <div className="p-2 border-t border-zinc-800/80 bg-zinc-950 flex-shrink-0">
+      {/* Footer */}
+      <div className="p-2.5 border-t border-zinc-800/80 space-y-1 flex-shrink-0">
         <a
-          href="https://strategyaccademy.netlify.app"
+          href={websiteHref}
           target="_blank"
           rel="noopener noreferrer"
-          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-normal text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900/60 transition-colors ${
-            collapsed ? 'justify-center' : ''
-          }`}
-          title="Open Public Website"
+          title="Open your website"
+          className={`${itemBase} ${itemPad} text-zinc-400 hover:text-white hover:bg-zinc-900`}
         >
-          <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
-          {!collapsed && <span>Storefront</span>}
+          <ExternalLink className="w-[18px] h-[18px] flex-shrink-0" />
+          {!collapsed && <span>View website</span>}
         </a>
+        <button
+          id="sidebar-sign-out-btn"
+          onClick={logout}
+          title="Sign out"
+          className={`${itemBase} ${itemPad} text-zinc-400 hover:text-rose-300 hover:bg-zinc-900`}
+        >
+          <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
+          {!collapsed && <span>Sign out</span>}
+        </button>
       </div>
     </aside>
   );

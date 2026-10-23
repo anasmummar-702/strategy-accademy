@@ -1502,9 +1502,13 @@ select.admin-input-control:focus {
 .rounded-3xl { border-radius: var(--radius-xl); }
 .rounded-full { border-radius: var(--radius-full); }
 
-.border { border: 1px solid rgba(255, 255, 255, 0.1); }
-.border-b { border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-.border-t { border-top: 1px solid rgba(255, 255, 255, 0.1); }
+/* These dark-theme borders are for the public site only; the light admin panel
+   (.admin-root) keeps Tailwind's normal border colours so inputs and cards stay visible. */
+.border:where(:not(.admin-root *)) { border: 1px solid rgba(255, 255, 255, 0.1); }
+.border-b:where(:not(.admin-root *)) { border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.border-t:where(:not(.admin-root *)) { border-top: 1px solid rgba(255, 255, 255, 0.1); }
+/* Undo the global "button { border: none }" inside the admin so Tailwind border classes work there. */
+:where(.admin-root) button { border-width: 0; border-style: solid; border-color: #e5e7eb; }
 
 .text-white { color: #ffffff; }
 .text-black { color: #000000; }

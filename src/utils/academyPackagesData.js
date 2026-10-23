@@ -144,7 +144,7 @@ export function getAcademyPackages() {
  * Save all Academy packages to localStorage and broadcast real-time event
  */
 export function saveAcademyPackages(packages) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return false;
   try {
     localStorage.setItem(PACKAGES_STORAGE_KEY, JSON.stringify(packages));
     window.dispatchEvent(
@@ -152,8 +152,10 @@ export function saveAcademyPackages(packages) {
         detail: { packages }
       })
     );
+    return true;
   } catch (e) {
     console.error('Failed to save academy packages to storage:', e);
+    return false;
   }
 }
 

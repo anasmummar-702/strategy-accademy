@@ -1,56 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import {
-  ArrowLeft,
-  Save,
-  Layers,
-  Plus,
-  Trash2,
-  AlertCircle,
-  GripVertical,
-  RefreshCw,
-  Tag,
-  Shield,
-  Image as ImageIcon
-} from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, AlertCircle, RefreshCw, ChevronDown } from 'lucide-react';
 import { adminApi } from '../../services/adminApi';
 import StockControl from '../../components/StockControl';
 import MultiImageUploader from '../../components/MultiImageUploader';
 
-const QUICK_PRESETS = {
-  apparel: [
-    { size: 'S', price: '', stock: 15 },
-    { size: 'M', price: '', stock: 25 },
-    { size: 'L', price: '', stock: 25 },
-    { size: 'XL', price: '', stock: 15 },
-    { size: '2XL', price: '', stock: 8 },
-  ],
-  shoes: [
-    { size: 'EU 39', price: '', stock: 6 },
-    { size: 'EU 40', price: '', stock: 12 },
-    { size: 'EU 41', price: '', stock: 18 },
-    { size: 'EU 42', price: '', stock: 20 },
-    { size: 'EU 43', price: '', stock: 15 },
-    { size: 'EU 44', price: '', stock: 10 },
-  ],
-  balls: [
-    { size: 'Size 5 (Youth)', price: '', stock: 15 },
-    { size: 'Size 6 (Intermediate)', price: '', stock: 20 },
-    { size: 'Size 7 (Official Regulation)', price: '', stock: 35 },
-  ],
-  skates: [
-    { size: 'EU 36', price: '', stock: 8 },
-    { size: 'EU 38', price: '', stock: 14 },
-    { size: 'EU 40', price: '', stock: 18 },
-    { size: 'EU 42', price: '', stock: 14 },
-    { size: 'EU 44', price: '', stock: 8 },
-  ],
+// One-click size lists
+const SIZE_PRESETS = {
+  Clothes: ['S', 'M', 'L', 'XL', '2XL'],
+  Shoes: ['EU 39', 'EU 40', 'EU 41', 'EU 42', 'EU 43', 'EU 44'],
+  Skates: ['EU 36', 'EU 38', 'EU 40', 'EU 42', 'EU 44'],
+  Balls: ['Size 5', 'Size 6', 'Size 7'],
 };
 
-export default function ProductFormView({
-  product = null,
-  onCancel,
-  onSaveSuccess
-}) {
+const CATEGORIES = [
+  ['Basketball', 'Basketball'],
+  ['Running', 'Running & shoes'],
+  ['Skating', 'Skating'],
+  ['Football', 'Football'],
+  ['Fitness', 'Fitness'],
+  ['Apparel', 'Clothing'],
+];
+
+const BADGES = [
+  ['isNewArrival', 'New arrival'],
+  ['isBestSeller', 'Best seller'],
+  ['isFeatured', 'Featured on home page'],
+  ['isSpecialEdition', 'Special edition'],
+];
+
+const inputCls =
+  'w-full px-3.5 py-2.5 bg-white border border-zinc-300 rounded-xl text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-900 focus:ring-1 focus:ring-zinc-900';
+
+function Card({ title, hint, children, right }) {
+  return (
+    <section className="bg-white border border-zinc-200 rounded-2xl p-5 sm:p-6 space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-zinc-900">{title}</h2>
+          {hint && <p className="text-sm text-zinc-500 mt-0.5">{hint}</p>}
+        </div>
+        {right}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Field({ label, hint, required, children }) {
+  return (
+    <label className="block">
+      <span className="block text-sm font-medium text-zinc-800 mb-1.5">
+        {label} {required && <span className="text-rose-500">*</span>}
+      </span>
+      {children}
+      {hint && <span className="block text-xs text-zinc-500 mt-1">{hint}</span>}
+    </label>
+  );
+}
+
+const newVariant = (name = '') => ({ id: `v_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, name, colorHex: '#18181b', images: [], sizes: [] });
+
+export default function ProductFormView({ product = null, onCancel, onSaveSuccess }) {
   const isEditing = !!product;
 
   const [formData, setFormData] = useState({
@@ -60,10 +70,10 @@ export default function ProductFormView({
     category: 'Basketball',
     sport: 'Basketball',
     gender: 'unisex',
-    priceAed: 49.99,
-    salePriceAed: 49.99,
-    costPriceAed: 24.00,
-    stockQuantity: 45,
+    priceAed: '',
+    salePriceAed: '',
+    costPriceAed: '',
+    stockQuantity: 10,
     lowStockThreshold: 5,
     description: '',
     image: '',
@@ -74,828 +84,416 @@ export default function ProductFormView({
     isSpecialEdition: false,
     status: 'published',
   });
-
-  const [variants, setVariants] = useState([
-    {
-      id: 'v_1',
-      name: 'Triple Black / Gold',
-      colorHex: '#18181b',
-      images: ['/images/strategy_basketball_ball.jpg'],
-      sizes: [
-        { size: 'Standard Size 7', price: 49.99, stock: 25 },
-        { size: 'Size 6 Intermediate', price: 49.99, stock: 20 },
-      ]
-    }
-  ]);
-
+  const [hasSizes, setHasSizes] = useState(false);
+  const [variants, setVariants] = useState([newVariant()]);
+  const [showMore, setShowMore] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Populate data when editing
+  // Fill the form when editing
   useEffect(() => {
-    if (product) {
-      setFormData({
-        name: product.name || '',
-        slug: product.slug || '',
-        sku: product.sku || '',
-        category: product.category || 'Basketball',
-        sport: product.sport || 'Basketball',
-        gender: product.gender || 'unisex',
-        priceAed: product.priceFils ? (product.priceFils / 100).toFixed(2) : (product.price || 49.99),
-        salePriceAed: product.salePriceFils ? (product.salePriceFils / 100).toFixed(2) : (product.price || 49.99),
-        costPriceAed: product.costPriceFils ? (product.costPriceFils / 100).toFixed(2) : 24.00,
-        stockQuantity: product.stockQuantity ?? product.stock ?? 45,
-        lowStockThreshold: product.lowStockThreshold || 5,
-        description: product.description || '',
-        image: product.image || (product.images && product.images[0]) || '',
-        images: product.images?.length ? product.images : (product.image ? [product.image] : []),
-        isFeatured: !!product.isFeatured,
-        isBestSeller: !!product.isBestSeller,
-        isNewArrival: !!product.isNewArrival,
-        isSpecialEdition: !!product.isSpecialEdition,
-        status: product.status || 'published',
-      });
-
-      if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
-        setVariants(product.variants.map((v, i) => ({
+    if (!product) return;
+    const price = product.priceFils ? product.priceFils / 100 : product.price || '';
+    const sale = product.salePriceFils ? product.salePriceFils / 100 : '';
+    setFormData({
+      name: product.name || '',
+      slug: product.slug || '',
+      sku: product.sku || '',
+      category: product.category || 'Basketball',
+      sport: product.sport || 'Basketball',
+      gender: product.gender || 'unisex',
+      priceAed: price,
+      // Only show a sale price when it is actually lower than the normal price
+      salePriceAed: sale && sale < price ? sale : '',
+      costPriceAed: product.costPriceFils ? product.costPriceFils / 100 : '',
+      stockQuantity: product.stockQuantity ?? product.stock ?? 0,
+      lowStockThreshold: product.lowStockThreshold || 5,
+      description: product.description || '',
+      image: product.image || product.images?.[0] || '',
+      images: product.images?.length ? product.images : product.image ? [product.image] : [],
+      isFeatured: !!product.isFeatured,
+      isBestSeller: !!product.isBestSeller,
+      isNewArrival: !!product.isNewArrival,
+      isSpecialEdition: !!product.isSpecialEdition,
+      status: product.status || 'published',
+    });
+    if (Array.isArray(product.variants) && product.variants.some((v) => v.sizes?.length)) {
+      setHasSizes(true);
+      setVariants(
+        product.variants.map((v, i) => ({
           id: v.id || `v_${i + 1}`,
-          name: v.color || v.name || 'Default Variant',
+          name: v.color || v.name || '',
           colorHex: v.colorHex || '#18181b',
-          images: v.images || [product.image || '/images/strategy_basketball_ball.jpg'],
-          sizes: v.sizes || [{ size: v.size || 'M', price: product.price || 49.99, stock: v.stockQuantity || 10 }]
-        })));
-      }
+          images: v.images || [],
+          sizes: (v.sizes || []).map((s) => ({ size: s.size, price: s.price, stock: Number(s.stock) || 0 })),
+        }))
+      );
     }
   }, [product]);
 
-  // Handle Form Change
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  const set = (name, value) =>
     setFormData((prev) => {
-      const next = { ...prev, [name]: type === 'checkbox' ? checked : value };
+      const next = { ...prev, [name]: value };
       if (name === 'name' && !isEditing) {
         next.slug = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        if (!prev.sku) {
-          next.sku = `STR-${value.substring(0, 4).toUpperCase() || 'PRO'}-${Math.floor(100 + Math.random() * 900)}`;
-        }
       }
       return next;
     });
-  };
+  const onField = (e) => set(e.target.name, e.target.value);
 
-  // Add a new variant block
-  const handleAddVariant = () => {
-    const newId = `v_${Date.now()}`;
-    const basePrice = parseFloat(formData.priceAed) || 49.99;
-    setVariants((prev) => [
-      ...prev,
-      {
-        id: newId,
-        name: 'New Colorway',
-        colorHex: '#065184',
-        images: [formData.image],
-        sizes: [
-          { size: 'M', price: basePrice, stock: 15 },
-          { size: 'L', price: basePrice, stock: 15 },
-        ]
-      }
-    ]);
-  };
-
-  // Delete variant block
-  const handleDeleteVariant = (id) => {
-    if (variants.length <= 1) {
-      alert('A product must maintain at least one variant configuration.');
-      return;
-    }
-    setVariants((prev) => prev.filter((v) => v.id !== id));
-  };
-
-  // Update variant field
-  const handleUpdateVariant = (id, key, val) => {
+  // ---- sizes ----
+  const updateVariant = (id, patch) => setVariants((prev) => prev.map((v) => (v.id === id ? { ...v, ...patch } : v)));
+  const addSize = (id, size = '') =>
+    setVariants((prev) => prev.map((v) => (v.id === id ? { ...v, sizes: [...v.sizes, { size, price: '', stock: 0 }] } : v)));
+  const applyPreset = (id, key) =>
+    updateVariant(id, { sizes: SIZE_PRESETS[key].map((size) => ({ size, price: '', stock: 0 })) });
+  const updateSize = (id, idx, patch) =>
     setVariants((prev) =>
-      prev.map((v) => (v.id === id ? { ...v, [key]: val } : v))
+      prev.map((v) => (v.id === id ? { ...v, sizes: v.sizes.map((s, i) => (i === idx ? { ...s, ...patch } : s)) } : v))
     );
-  };
+  const removeSize = (id, idx) =>
+    setVariants((prev) => prev.map((v) => (v.id === id ? { ...v, sizes: v.sizes.filter((_, i) => i !== idx) } : v)));
 
-  // Quick preset apply
-  const handleApplyPreset = (variantId, presetKey) => {
-    if (!presetKey || !QUICK_PRESETS[presetKey]) return;
-    const basePrice = parseFloat(formData.priceAed) || 49.99;
-    const newSizes = QUICK_PRESETS[presetKey].map((item) => ({
-      size: item.size,
-      price: basePrice,
-      stock: item.stock
-    }));
+  const sizesTotal = variants.reduce((sum, v) => sum + v.sizes.reduce((s, x) => s + (Number(x.stock) || 0), 0), 0);
+  const totalStock = hasSizes ? sizesTotal : Number(formData.stockQuantity) || 0;
 
-    setVariants((prev) =>
-      prev.map((v) => (v.id === variantId ? { ...v, sizes: newSizes } : v))
-    );
-  };
-
-  // Add single size row
-  const handleAddSizeRow = (variantId) => {
-    const basePrice = parseFloat(formData.priceAed) || 49.99;
-    setVariants((prev) =>
-      prev.map((v) => {
-        if (v.id === variantId) {
-          return {
-            ...v,
-            sizes: [...v.sizes, { size: 'XL', price: basePrice, stock: 10 }]
-          };
-        }
-        return v;
-      })
-    );
-  };
-
-  // Update single size row
-  const handleUpdateSizeRow = (variantId, sizeIdx, field, val) => {
-    setVariants((prev) =>
-      prev.map((v) => {
-        if (v.id === variantId) {
-          const nextSizes = [...v.sizes];
-          nextSizes[sizeIdx] = {
-            ...nextSizes[sizeIdx],
-            [field]: field === 'stock' ? parseInt(val) || 0 : val
-          };
-          return { ...v, sizes: nextSizes };
-        }
-        return v;
-      })
-    );
-  };
-
-  // Delete single size row
-  const handleDeleteSizeRow = (variantId, sizeIdx) => {
-    setVariants((prev) =>
-      prev.map((v) => {
-        if (v.id === variantId) {
-          if (v.sizes.length <= 1) return v;
-          return {
-            ...v,
-            sizes: v.sizes.filter((_, idx) => idx !== sizeIdx)
-          };
-        }
-        return v;
-      })
-    );
-  };
-
-  // Handle Form Submit
+  // ---- save ----
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg('');
+    const price = parseFloat(formData.priceAed);
+    const sale = parseFloat(formData.salePriceAed);
+    if (!formData.name.trim()) return setErrorMsg('Please give the product a name.');
+    if (!(price > 0)) return setErrorMsg('Please enter a price.');
+    if (sale && sale >= price) return setErrorMsg('The sale price should be lower than the normal price.');
+    if (hasSizes && !variants.some((v) => v.sizes.some((s) => s.size.trim())))
+      return setErrorMsg('Add at least one size, or switch off “Comes in sizes”.');
 
-    if (!formData.name.trim()) {
-      setErrorMsg('Product name is required.');
-      return;
-    }
+    const images = formData.images?.length ? formData.images : ['/images/strategy_basketball_ball.jpg'];
+    const cleanVariants = hasSizes
+      ? variants.map((v) => ({
+          ...v,
+          name: v.name.trim() || 'Standard',
+          images: v.images?.length ? v.images : [images[0]],
+          sizes: v.sizes.filter((s) => s.size.trim()).map((s) => ({ ...s, price: s.price || price })),
+        }))
+      : [];
+    const sku = formData.sku || `STR-${formData.name.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'PRO'}-${Math.floor(100 + Math.random() * 900)}`;
+
+    const payload = {
+      ...formData,
+      sku,
+      image: images[0],
+      images,
+      id: product?.id,
+      price,
+      priceFils: Math.round(price * 100),
+      salePriceFils: Math.round((sale || price) * 100),
+      costPriceFils: Math.round((parseFloat(formData.costPriceAed) || 0) * 100),
+      stockQuantity: totalStock,
+      lowStockThreshold: Number(formData.lowStockThreshold) || 5,
+      variants: cleanVariants,
+    };
 
     setIsSubmitting(true);
     try {
-      const primaryImage = formData.images?.[0] || formData.image || variants?.[0]?.images?.[0] || '/images/strategy_basketball_ball.jpg';
-      const productImages = formData.images?.length > 0 ? formData.images : [primaryImage];
-      const payload = {
-        ...formData,
-        image: primaryImage,
-        images: productImages,
-        id: product?.id || `prod_${Date.now()}`,
-        price: parseFloat(formData.priceAed) || 0,
-        priceFils: Math.round((parseFloat(formData.priceAed) || 0) * 100),
-        salePriceFils: Math.round((parseFloat(formData.salePriceAed) || 0) * 100),
-        costPriceFils: Math.round((parseFloat(formData.costPriceAed) || 0) * 100),
-        vatRate: 5,
-        vatAmountAed: parseFloat(((parseFloat(formData.priceAed) || 0) * 0.05).toFixed(2)),
-        vatAmountFils: Math.round((parseFloat(formData.priceAed) || 0) * 5),
-        priceWithVatAed: parseFloat(((parseFloat(formData.priceAed) || 0) * 1.05).toFixed(2)),
-        isTaxable: true,
-        trnNumber: '100293847500003',
-        stockQuantity: parseInt(formData.stockQuantity) || 0,
-        variants,
-      };
-
-      // Call API helper or seed update
-      await adminApi.saveProduct(payload);
-
-      if (onSaveSuccess) {
-        onSaveSuccess(payload);
-      }
+      const saved = await adminApi.saveProduct(payload);
+      onSaveSuccess?.(saved || payload);
     } catch (err) {
-      console.error('Error saving product:', err);
-      // Fallback optimistic resolution
-      if (onSaveSuccess) {
-        const primaryImage = formData.images?.[0] || formData.image || variants?.[0]?.images?.[0] || '/images/strategy_basketball_ball.jpg';
-        const productImages = formData.images?.length > 0 ? formData.images : [primaryImage];
-        onSaveSuccess({
-          ...formData,
-          image: primaryImage,
-          images: productImages,
-          id: product?.id || `prod_${Date.now()}`,
-          price: parseFloat(formData.priceAed),
-          variants,
-        });
-      }
+      setErrorMsg(
+        err?.details?.isNetworkError
+          ? 'Could not save: the shop server is not running, so changes cannot be stored right now.'
+          : err?.status === 401
+            ? 'Could not save: your sign-in has expired. Please sign out and sign in again.'
+            : `Could not save: ${err.message}`
+      );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-24 font-['Plus_Jakarta_Sans',sans-serif]">
-      {/* Top Breadcrumb & Page Actions Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-zinc-200">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="p-2 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 rounded-lg transition cursor-pointer"
-            title="Return to Product Inventory"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-zinc-950 tracking-tight">
-              {isEditing ? `Edit Product: ${formData.name || 'Untitled'}` : 'Add New Product'}
-            </h1>
-            <p className="text-xs text-zinc-500 mt-0.5">
-              Specify catalog details, inventory variants, size pricing matrices, and storefront publishing status.
-            </p>
-          </div>
-        </div>
+  const price = parseFloat(formData.priceAed) || 0;
+  const sale = parseFloat(formData.salePriceAed) || 0;
 
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 border border-zinc-300 hover:bg-zinc-100 text-zinc-700 font-semibold text-xs rounded-lg transition cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-5 py-2 bg-zinc-950 hover:bg-black text-white font-semibold text-xs rounded-lg transition flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
-          >
-            {isSubmitting ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Save className="w-3.5 h-3.5" />
-            )}
-            <span>{isEditing ? 'Save Changes' : 'Save Product'}</span>
-          </button>
+  return (
+    <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-5 pb-28">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="p-2 -ml-2 text-zinc-600 hover:text-zinc-950 hover:bg-zinc-100 rounded-xl cursor-pointer"
+          title="Back to products"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+        <div>
+          <h2 className="text-xl font-semibold text-zinc-900">
+            {isEditing ? formData.name || 'Edit product' : 'New product'}
+          </h2>
+          <p className="text-sm text-zinc-500">Fill in the basics. Everything else is optional.</p>
         </div>
       </div>
 
-      {/* Error Alert */}
-      {errorMsg && (
-        <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
+      <Card title="Photos" hint="The first photo is the one customers see first.">
+        <MultiImageUploader
+          images={formData.images || []}
+          onChange={(imgs) => setFormData((prev) => ({ ...prev, images: imgs, image: imgs[0] || '' }))}
+          maxImages={6}
+          label="Product photos (up to 6)"
+          hint="Drag photos here or click to choose from your computer."
+        />
+      </Card>
 
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Card 1: General Product Information */}
-        <div className="bg-white border border-zinc-200/90 rounded-xl p-6 shadow-xs space-y-5">
-          <h2 className="text-sm font-bold text-zinc-950 uppercase tracking-wider flex items-center gap-2 pb-3 border-b border-zinc-100">
-            <Tag className="w-4 h-4 text-zinc-600" />
-            <span>1. General Information & Catalog Details</span>
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                Product Title <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                required
-                value={formData.name}
-                onChange={handleChange}
-                placeholder="e.g. STRATEGY Carbon Elite Speed Shoe"
-                className="w-full px-3.5 py-2.5 bg-white border border-zinc-300 rounded-lg text-xs font-normal text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 admin-input-control"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                Storefront Category <span className="text-rose-500">*</span>
-              </label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className="w-full px-3.5 py-2.5 bg-white border border-zinc-300 rounded-lg text-xs font-normal text-zinc-900 focus:outline-none focus:border-zinc-950 focus:ring-1 focus:ring-zinc-950 cursor-pointer admin-input-control"
-              >
-                <option value="Basketball">Basketball Gear</option>
-                <option value="Running">Running & Footwear</option>
-                <option value="Skating">Inline Skating & Protective</option>
-                <option value="Football">Match Footballs & Cleats</option>
-                <option value="Fitness">Fitness & Conditioning</option>
-                <option value="Apparel">Technical Apparel</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                Sport Discipline
-              </label>
-              <select
-                name="sport"
-                value={formData.sport}
-                onChange={handleChange}
-                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-normal text-zinc-900 focus:outline-none focus:border-zinc-950 cursor-pointer admin-input-control"
-              >
-                <option value="Basketball">Basketball</option>
-                <option value="Running">Speed Running</option>
-                <option value="Skating">Inline Skating</option>
-                <option value="Football">Football / Soccer</option>
-                <option value="Training">Gym & Cross-Training</option>
-                <option value="Multi-Sport">Multi-Discipline Sports</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                Athlete Fit / Gender
-              </label>
-              <select
-                name="gender"
-                value={formData.gender}
-                onChange={handleChange}
-                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-normal text-zinc-900 focus:outline-none focus:border-zinc-950 cursor-pointer admin-input-control"
-              >
-                <option value="unisex">Unisex Adult</option>
-                <option value="men">Men's Athletic</option>
-                <option value="women">Women's Athletic</option>
-                <option value="junior">Junior / Youth</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                SKU / Barcode Model
-              </label>
-              <input
-                type="text"
-                name="sku"
-                value={formData.sku}
-                onChange={handleChange}
-                placeholder="STR-SKU-900"
-                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-mono text-zinc-900 focus:outline-none focus:border-zinc-950 admin-input-control"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-              Product Specifications & Details
-            </label>
-            <textarea
-              name="description"
-              rows={3}
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="High performance athletic gear built with premium materials for maximum durability and athlete safety..."
-              className="w-full px-3.5 py-2.5 bg-white border border-zinc-300 rounded-lg text-xs font-normal text-zinc-900 focus:outline-none focus:border-zinc-950 resize-y admin-input-control"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 pt-2 border-t border-zinc-100">
-            <div>
-              <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                Retail Price (AED) <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                name="priceAed"
-                required
-                value={formData.priceAed}
-                onChange={handleChange}
-                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-semibold text-zinc-900 focus:outline-none focus:border-zinc-950 admin-input-control"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                Sale Price (AED)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                name="salePriceAed"
-                value={formData.salePriceAed}
-                onChange={handleChange}
-                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-semibold text-zinc-900 focus:outline-none focus:border-zinc-950 admin-input-control"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                Cost Price (AED)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                name="costPriceAed"
-                value={formData.costPriceAed}
-                onChange={handleChange}
-                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-semibold text-zinc-900 focus:outline-none focus:border-zinc-950 admin-input-control"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-                Total Stock Units
-              </label>
-              <div className="pt-0.5">
-                <StockControl
-                  value={formData.stockQuantity}
-                  onChange={(newQty) => setFormData((prev) => ({ ...prev, stockQuantity: newQty }))}
-                  showQuickPills={true}
-                  showBadge={true}
-                  badgePosition="right"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* UAE Federal Tax (5% VAT) Compliance & Calculation Box */}
-          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-blue-50/80 via-slate-50 to-blue-50/60 border border-blue-200/90 shadow-2xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center text-xs shadow-xs">
-                  5%
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900">UAE Federal Tax (5% VAT)</span>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider">
-                      Tax Included
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                    Official Tax Registration: <span className="font-mono text-slate-700 font-semibold">TRN 100293847500003</span> • Standard 5% VAT rate
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 bg-white px-3.5 py-2 rounded-xl border border-blue-200 shadow-2xs self-start sm:self-auto">
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
-                    VAT (5%):
-                  </span>
-                  <span className="text-xs font-black text-blue-700 font-mono">
-                    + Dhs. {((parseFloat(formData.priceAed) || 0) * 0.05).toFixed(2)} AED
-                  </span>
-                </div>
-                <div className="h-6 w-px bg-slate-200" />
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">
-                    Total With VAT:
-                  </span>
-                  <span className="text-sm font-black text-slate-950 font-mono">
-                    Dhs. {((parseFloat(formData.priceAed) || 0) * 1.05).toFixed(2)} AED
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Product Media & Gallery (Up to 6 Images) */}
-        <div className="bg-white border border-zinc-200/90 rounded-xl p-6 shadow-xs space-y-4">
-          <MultiImageUploader
-            images={formData.images || []}
-            onChange={(newImages) => {
-              setFormData((prev) => ({
-                ...prev,
-                images: newImages,
-                image: newImages[0] || ''
-              }));
-            }}
-            maxImages={6}
-            label="2. Product Media & Gallery (Up to 6 Images)"
-            hint="Upload or paste up to 6 high-resolution product photos. The first image (#1) will be used as the primary storefront catalog cover."
-          />
-        </div>
-
-        {/* Card 3: Variants & Inventory Matrices */}
-        <div className="bg-white border border-zinc-200/90 rounded-xl p-6 shadow-xs space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-100">
-            <div>
-              <h2 className="text-sm font-bold text-zinc-950 uppercase tracking-wider flex items-center gap-2">
-                <Layers className="w-4 h-4 text-zinc-700" />
-                <span>3. Variants & Inventory Matrices</span>
-              </h2>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Add options like Color, Finish, or Edition. Each option maintains its own image preview and per-size stock matrix.
-              </p>
-            </div>
-            <span className="text-xs font-semibold px-2.5 py-1 bg-zinc-100 text-zinc-700 rounded-full">
-              {variants.length} {variants.length === 1 ? 'Variant' : 'Variants'}
-            </span>
-          </div>
-
-          {/* Variant Blocks List */}
-          <div className="space-y-4">
-            {variants.map((v, vIdx) => (
-              <div
-                key={v.id}
-                className="bg-white border border-zinc-200 rounded-xl overflow-hidden shadow-xs hover:border-zinc-300 transition-all"
-              >
-                {/* Variant Header */}
-                <div className="bg-zinc-50 px-4 py-3 flex items-center justify-between gap-3 border-b border-zinc-200">
-                  <div className="flex items-center gap-3 flex-1">
-                    <GripVertical className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                    {/* Color Swatch */}
-                    <div className="relative flex items-center">
-                      <input
-                        type="color"
-                        value={v.colorHex || '#18181b'}
-                        onChange={(e) => handleUpdateVariant(v.id, 'colorHex', e.target.value)}
-                        className="w-7 h-7 rounded-full border border-zinc-300 p-0 cursor-pointer overflow-hidden bg-transparent"
-                        title="Pick Color Tone"
-                      />
-                    </div>
-
-                    <div className="flex-1 max-w-sm">
-                      <input
-                        type="text"
-                        value={v.name}
-                        onChange={(e) => handleUpdateVariant(v.id, 'name', e.target.value)}
-                        placeholder="Variant Name (e.g. Stealth Black / Electric Volt)"
-                        className="w-full px-3 py-1.5 bg-white border border-zinc-300 rounded-lg text-xs font-semibold text-zinc-900 focus:outline-none focus:border-zinc-950 admin-input-control"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteVariant(v.id)}
-                    className="p-1.5 text-zinc-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                    title="Delete Variant"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Variant Body */}
-                <div className="p-4 space-y-4">
-                  {/* Variant Image URL input */}
-                  <div>
-                    <label className="block text-[11px] font-semibold text-zinc-700 mb-1">
-                      Variant Thumbnail Image
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-zinc-100 border border-zinc-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                        <img
-                          src={v.images?.[0] || formData.image}
-                          alt={v.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.target.src = '/images/strategy_basketball_ball.jpg';
-                          }}
-                        />
-                      </div>
-                      <input
-                        type="text"
-                        value={v.images?.[0] || ''}
-                        onChange={(e) => handleUpdateVariant(v.id, 'images', [e.target.value])}
-                        placeholder="/images/strategy_basketball_ball.jpg"
-                        className="flex-1 px-3 py-1.5 bg-white border border-zinc-300 rounded-lg text-xs text-zinc-900 focus:outline-none focus:border-zinc-950 admin-input-control"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Size & Stock Manager */}
-                  <div className="bg-zinc-50 border border-zinc-200/80 rounded-xl p-3.5 space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-zinc-800 uppercase tracking-wider">
-                        Sizes & Inventory Matrix
-                      </span>
-
-                      <div className="flex items-center gap-2">
-                        <select
-                          defaultValue=""
-                          onChange={(e) => {
-                            handleApplyPreset(v.id, e.target.value);
-                            e.target.value = '';
-                          }}
-                          className="px-2.5 py-1 bg-white border border-zinc-300 rounded-md text-xs font-medium text-zinc-800 focus:outline-none focus:border-zinc-950 cursor-pointer admin-input-control"
-                        >
-                          <option value="">+ Quick Fill Preset...</option>
-                          <option value="apparel">Apparel (S - 2XL)</option>
-                          <option value="shoes">Footwear (EU 39 - 44)</option>
-                          <option value="balls">Sports Balls (Size 5 - 7)</option>
-                          <option value="skates">Skates (EU 36 - 44)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Size Rows Table */}
-                    <div className="overflow-x-auto bg-white rounded-lg border border-zinc-200">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="bg-zinc-100/70 border-b border-zinc-200 text-zinc-600 font-semibold">
-                            <th className="py-2 px-3 text-left">Size / Fit</th>
-                            <th className="py-2 px-3 text-left">Price (AED)</th>
-                            <th className="py-2 px-3 text-left">Stock Units</th>
-                            <th className="py-2 px-2 text-right"></th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-zinc-100">
-                          {v.sizes.map((s, sIdx) => (
-                            <tr key={sIdx} className="hover:bg-zinc-50/50">
-                              <td className="py-2 px-3">
-                                <input
-                                  type="text"
-                                  value={s.size}
-                                  onChange={(e) => handleUpdateSizeRow(v.id, sIdx, 'size', e.target.value)}
-                                  className="w-full px-2 py-1 bg-white border border-zinc-200 rounded text-xs font-medium text-zinc-900 focus:outline-none focus:border-zinc-950 admin-input-control"
-                                />
-                              </td>
-                              <td className="py-2 px-3">
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={s.price}
-                                  onChange={(e) => handleUpdateSizeRow(v.id, sIdx, 'price', e.target.value)}
-                                  className="w-24 px-2 py-1 bg-white border border-zinc-200 rounded text-xs font-medium text-zinc-900 focus:outline-none focus:border-zinc-950 admin-input-control"
-                                />
-                              </td>
-                              <td className="py-2 px-3">
-                                <StockControl
-                                  value={s.stock}
-                                  compact={true}
-                                  onChange={(newQty) => handleUpdateSizeRow(v.id, sIdx, 'stock', newQty)}
-                                />
-                              </td>
-                              <td className="py-2 px-2 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeleteSizeRow(v.id, sIdx)}
-                                  className="p-1 text-zinc-400 hover:text-rose-600 transition cursor-pointer"
-                                  title="Delete Size"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => handleAddSizeRow(v.id)}
-                      className="text-xs font-semibold text-zinc-700 hover:text-zinc-950 transition flex items-center gap-1 cursor-pointer pt-1"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add Single Size Row</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
+      <Card title="Basic details">
+        <Field label="Product name" required>
+          <input name="name" value={formData.name} onChange={onField} placeholder="e.g. Pro Grip Basketball" className={inputCls} />
+        </Field>
+        <Field label="Category">
+          <select name="category" value={formData.category} onChange={onField} className={`${inputCls} cursor-pointer`}>
+            {CATEGORIES.map(([v, l]) => (
+              <option key={v} value={v}>{l}</option>
             ))}
-          </div>
+          </select>
+        </Field>
+        <Field label="Description" hint="A few sentences about the product.">
+          <textarea name="description" rows={4} value={formData.description} onChange={onField} className={`${inputCls} resize-y`} />
+        </Field>
+      </Card>
 
-          {/* Add Another Variant Button */}
-          <button
-            type="button"
-            onClick={handleAddVariant}
-            className="w-full py-3.5 border-2 border-dashed border-zinc-300 hover:border-zinc-950 bg-zinc-50/50 hover:bg-zinc-100 text-zinc-800 font-semibold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-          >
-            <Plus className="w-4 h-4 text-emerald-600" />
-            <span>+ Add Another Variant (Color / Style)</span>
-          </button>
+      <Card title="Price">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Field label="Price (AED)" required hint="Including VAT">
+            <input name="priceAed" type="number" min="0" step="0.01" value={formData.priceAed} onChange={onField} placeholder="0.00" className={inputCls} />
+          </Field>
+          <Field label="Sale price (AED)" hint="Leave empty if it's not on sale">
+            <input name="salePriceAed" type="number" min="0" step="0.01" value={formData.salePriceAed} onChange={onField} placeholder="—" className={inputCls} />
+          </Field>
         </div>
+        {sale > 0 && sale < price && (
+          <p className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-3.5 py-2.5">
+            Customers will see <s className="text-zinc-400">AED {price.toFixed(2)}</s> <strong>AED {sale.toFixed(2)}</strong> ({Math.round((1 - sale / price) * 100)}% off)
+          </p>
+        )}
+      </Card>
 
-        {/* Card 4: Marketing & Publishing Flags */}
-        <div className="bg-white border border-zinc-200/90 rounded-xl p-6 shadow-xs space-y-4">
-          <h2 className="text-sm font-bold text-zinc-950 uppercase tracking-wider flex items-center gap-2 pb-3 border-b border-zinc-100">
-            <Shield className="w-4 h-4 text-zinc-700" />
-            <span>4. Marketing Badges & Publishing Status</span>
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <label className="flex items-center justify-between p-3.5 bg-zinc-50 border border-zinc-200/80 rounded-xl cursor-pointer hover:bg-zinc-100/70 transition">
-              <div>
-                <span className="text-xs font-bold text-zinc-900 block">Featured Product</span>
-                <span className="text-[11px] text-zinc-500 block">Display in homepage hero carousel</span>
-              </div>
-              <input
-                type="checkbox"
-                name="isFeatured"
-                checked={formData.isFeatured}
-                onChange={handleChange}
-                className="w-4 h-4 accent-zinc-950 rounded cursor-pointer"
-              />
-            </label>
-
-            <label className="flex items-center justify-between p-3.5 bg-zinc-50 border border-zinc-200/80 rounded-xl cursor-pointer hover:bg-zinc-100/70 transition">
-              <div>
-                <span className="text-xs font-bold text-zinc-900 block">Best Seller Badge</span>
-                <span className="text-[11px] text-zinc-500 block">Highlight with Gold Best Seller tag</span>
-              </div>
-              <input
-                type="checkbox"
-                name="isBestSeller"
-                checked={formData.isBestSeller}
-                onChange={handleChange}
-                className="w-4 h-4 accent-zinc-950 rounded cursor-pointer"
-              />
-            </label>
-
-            <label className="flex items-center justify-between p-3.5 bg-zinc-50 border border-zinc-200/80 rounded-xl cursor-pointer hover:bg-zinc-100/70 transition">
-              <div>
-                <span className="text-xs font-bold text-zinc-900 block">New Arrival Tag</span>
-                <span className="text-[11px] text-zinc-500 block">Mark as new seasonal equipment release</span>
-              </div>
-              <input
-                type="checkbox"
-                name="isNewArrival"
-                checked={formData.isNewArrival}
-                onChange={handleChange}
-                className="w-4 h-4 accent-zinc-950 rounded cursor-pointer"
-              />
-            </label>
-
-            <label className="flex items-center justify-between p-3.5 bg-zinc-50 border border-zinc-200/80 rounded-xl cursor-pointer hover:bg-zinc-100/70 transition">
-              <div>
-                <span className="text-xs font-bold text-zinc-900 block">Special Edition Vault</span>
-                <span className="text-[11px] text-zinc-500 block">Collector piece with numbered certificate</span>
-              </div>
-              <input
-                type="checkbox"
-                name="isSpecialEdition"
-                checked={formData.isSpecialEdition}
-                onChange={handleChange}
-                className="w-4 h-4 accent-zinc-950 rounded cursor-pointer"
-              />
-            </label>
-          </div>
-
-          <div className="pt-2">
-            <label className="block text-xs font-semibold text-zinc-800 mb-1.5">
-              Publishing Visibility
-            </label>
-            <select
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              className="w-full max-w-xs px-3.5 py-2 bg-white border border-zinc-300 rounded-lg text-xs font-semibold text-zinc-900 focus:outline-none focus:border-zinc-950 cursor-pointer admin-input-control"
-            >
-              <option value="published">Published (Live on storefront)</option>
-              <option value="draft">Draft (Hidden in backoffice)</option>
-              <option value="archived">Archived (Discontinued)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Sticky Bottom Action Bar */}
-        <div className="sticky bottom-4 bg-white/95 backdrop-blur-md border border-zinc-200/90 rounded-xl py-3.5 px-6 z-30 flex items-center justify-between shadow-md mt-6">
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span className="font-medium text-zinc-700">
-              {isEditing ? `Editing "${formData.name}"` : 'Creating New Product Draft'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
+      <Card
+        title="Stock"
+        hint={hasSizes ? `${totalStock} in stock across all sizes` : 'How many do you have?'}
+        right={
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <span className="text-sm text-zinc-700">Comes in sizes</span>
             <button
               type="button"
-              onClick={onCancel}
-              className="px-4 py-2 border border-zinc-300 hover:bg-zinc-100 text-zinc-700 font-semibold text-xs rounded-lg transition cursor-pointer"
+              role="switch"
+              aria-checked={hasSizes}
+              id="toggle-sizes"
+              onClick={() => setHasSizes(!hasSizes)}
+              className={`relative w-11 h-6 rounded-full transition ${hasSizes ? 'bg-zinc-900' : 'bg-zinc-300'}`}
             >
-              Cancel
+              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${hasSizes ? 'left-[22px]' : 'left-0.5'}`} />
             </button>
+          </label>
+        }
+      >
+        {!hasSizes ? (
+          <StockControl
+            value={formData.stockQuantity}
+            onChange={(q) => set('stockQuantity', q)}
+            showQuickPills
+            showBadge
+            badgePosition="right"
+          />
+        ) : (
+          <div className="space-y-4">
+            {variants.map((v) => (
+              <div key={v.id} className={variants.length > 1 ? 'border border-zinc-200 rounded-xl p-4 space-y-3' : 'space-y-3'}>
+                {variants.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={v.name}
+                      onChange={(e) => updateVariant(v.id, { name: e.target.value })}
+                      placeholder="Colour, e.g. Black"
+                      className={`${inputCls} max-w-xs`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setVariants((prev) => prev.filter((x) => x.id !== v.id))}
+                      className="p-2 text-zinc-400 hover:text-rose-600 cursor-pointer"
+                      title="Remove this colour"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-zinc-500">Quick fill:</span>
+                  {Object.keys(SIZE_PRESETS).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => applyPreset(v.id, k)}
+                      className="px-3 py-1.5 rounded-lg text-sm ring-1 ring-zinc-200 hover:bg-zinc-50 text-zinc-700 cursor-pointer"
+                    >
+                      {k}
+                    </button>
+                  ))}
+                </div>
+
+                {v.sizes.length > 0 && (
+                  <ul className="divide-y divide-zinc-100 border border-zinc-200 rounded-xl">
+                    {v.sizes.map((s, idx) => (
+                      <li key={idx} className="flex items-center gap-3 px-3 py-2">
+                        <input
+                          value={s.size}
+                          onChange={(e) => updateSize(v.id, idx, { size: e.target.value })}
+                          placeholder="Size"
+                          className="flex-1 min-w-0 px-2.5 py-1.5 text-sm border border-transparent hover:border-zinc-200 focus:border-zinc-900 rounded-lg focus:outline-none"
+                        />
+                        <StockControl value={s.stock} onChange={(q) => updateSize(v.id, idx, { stock: q })} compact />
+                        <button
+                          type="button"
+                          onClick={() => removeSize(v.id, idx)}
+                          className="p-1.5 text-zinc-400 hover:text-rose-600 cursor-pointer"
+                          title="Remove size"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => addSize(v.id)}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-800 hover:text-black cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Add a size
+                </button>
+              </div>
+            ))}
+
             <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-6 py-2 bg-zinc-950 hover:bg-black text-white font-semibold text-xs rounded-lg transition flex items-center gap-2 shadow-xs cursor-pointer disabled:opacity-50"
+              type="button"
+              onClick={() => setVariants((prev) => [...prev, newVariant('')])}
+              className="text-sm text-zinc-500 hover:text-zinc-900 underline underline-offset-2 cursor-pointer"
             >
-              {isSubmitting ? (
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Save className="w-3.5 h-3.5" />
-              )}
-              <span>{isEditing ? 'Save Product Changes' : 'Publish Product'}</span>
+              {variants.length > 1 ? 'Add another colour' : 'Sell this in more than one colour?'}
             </button>
           </div>
+        )}
+      </Card>
+
+      <Card title="On the website">
+        <label className="flex items-center justify-between gap-4 p-3.5 rounded-xl bg-zinc-50 cursor-pointer">
+          <span>
+            <span className="block text-sm font-medium text-zinc-900">Show this product in the shop</span>
+            <span className="block text-sm text-zinc-500">Turn off to hide it without deleting it.</span>
+          </span>
+          <input
+            type="checkbox"
+            checked={formData.status === 'published'}
+            onChange={(e) => set('status', e.target.checked ? 'published' : 'draft')}
+            className="w-5 h-5 accent-zinc-900 cursor-pointer"
+          />
+        </label>
+        <div>
+          <p className="text-sm font-medium text-zinc-800 mb-2">Labels</p>
+          <div className="flex flex-wrap gap-2">
+            {BADGES.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => set(key, !formData[key])}
+                className={`px-3.5 py-2 rounded-xl text-sm font-medium transition cursor-pointer ${
+                  formData[key] ? 'bg-zinc-900 text-white' : 'ring-1 ring-zinc-200 text-zinc-700 hover:bg-zinc-50'
+                }`}
+              >
+                {formData[key] ? '✓ ' : '+ '}
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
-      </form>
-    </div>
+      </Card>
+
+      {/* Optional extras, hidden by default */}
+      <section className="bg-white border border-zinc-200 rounded-2xl">
+        <button
+          type="button"
+          onClick={() => setShowMore(!showMore)}
+          className="w-full flex items-center justify-between px-5 sm:px-6 py-4 text-left cursor-pointer"
+        >
+          <span>
+            <span className="block text-base font-semibold text-zinc-900">More options</span>
+            <span className="block text-sm text-zinc-500">Product code, sport, who it's for, cost price</span>
+          </span>
+          <ChevronDown className={`w-5 h-5 text-zinc-400 transition ${showMore ? 'rotate-180' : ''}`} />
+        </button>
+        {showMore && (
+          <div className="px-5 sm:px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Product code (SKU)" hint="Made automatically if left empty">
+              <input name="sku" value={formData.sku} onChange={onField} className={`${inputCls} font-mono`} />
+            </Field>
+            <Field label="Sport">
+              <select name="sport" value={formData.sport} onChange={onField} className={`${inputCls} cursor-pointer`}>
+                <option value="Basketball">Basketball</option>
+                <option value="Running">Running</option>
+                <option value="Skating">Skating</option>
+                <option value="Football">Football</option>
+                <option value="Training">Gym & training</option>
+                <option value="Multi-Sport">Several sports</option>
+              </select>
+            </Field>
+            <Field label="Who it's for">
+              <select name="gender" value={formData.gender} onChange={onField} className={`${inputCls} cursor-pointer`}>
+                <option value="unisex">Everyone</option>
+                <option value="men">Men</option>
+                <option value="women">Women</option>
+                <option value="junior">Kids</option>
+              </select>
+            </Field>
+            <Field label="Cost price (AED)" hint="Only you see this">
+              <input name="costPriceAed" type="number" min="0" step="0.01" value={formData.costPriceAed} onChange={onField} className={inputCls} />
+            </Field>
+            <Field label="Warn me when stock is at or below">
+              <input name="lowStockThreshold" type="number" min="0" value={formData.lowStockThreshold} onChange={onField} className={inputCls} />
+            </Field>
+          </div>
+        )}
+      </section>
+
+      {/* Save bar */}
+      <div className="sticky bottom-4 z-30 bg-white/95 backdrop-blur border border-zinc-200 rounded-2xl shadow-lg px-4 sm:px-5 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
+          {errorMsg ? (
+            <p className="text-sm text-rose-700 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              {errorMsg}
+            </p>
+          ) : (
+            <p className="text-sm text-zinc-500 truncate">
+              {formData.status === 'published' ? 'Will be visible in the shop' : 'Hidden from the shop'}
+              {price > 0 && ` · AED ${(sale && sale < price ? sale : price).toFixed(2)}`} · {totalStock} in stock
+            </p>
+          )}
+        </div>
+        <div className="flex gap-2 justify-end">
+          <button type="button" onClick={onCancel} className="px-4 py-2.5 rounded-xl text-sm font-medium ring-1 ring-zinc-200 hover:bg-zinc-50 cursor-pointer">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            id="save-product-btn"
+            disabled={isSubmitting}
+            className="px-5 py-2.5 bg-zinc-900 hover:bg-black text-white text-sm font-medium rounded-xl flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          >
+            {isSubmitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {isEditing ? 'Save changes' : 'Add product'}
+          </button>
+        </div>
+      </div>
+    </form>
   );
 }

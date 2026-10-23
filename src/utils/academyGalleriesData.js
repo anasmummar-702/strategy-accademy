@@ -148,12 +148,15 @@ export function getSkatingGallery() {
  * Save Skating Academy gallery photos
  */
 export function saveSkatingGallery(items) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return false;
   try {
     localStorage.setItem(SKATING_STORAGE_KEY, JSON.stringify(items));
     window.dispatchEvent(new CustomEvent('strategy_gallery_updated', { detail: { sport: 'skating', items } }));
+    return true;
   } catch (e) {
+    // Usually the browser storage is full (too many large uploaded photos)
     console.error('Failed to save skating gallery:', e);
+    return false;
   }
 }
 
@@ -178,12 +181,15 @@ export function getBasketballGallery() {
  * Save Basketball Academy gallery photos
  */
 export function saveBasketballGallery(items) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return false;
   try {
     localStorage.setItem(BASKETBALL_STORAGE_KEY, JSON.stringify(items));
     window.dispatchEvent(new CustomEvent('strategy_gallery_updated', { detail: { sport: 'basketball', items } }));
+    return true;
   } catch (e) {
+    // Usually the browser storage is full (too many large uploaded photos)
     console.error('Failed to save basketball gallery:', e);
+    return false;
   }
 }
 

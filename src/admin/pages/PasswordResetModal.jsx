@@ -18,12 +18,12 @@ export default function PasswordResetModal({ isOpen, onClose }) {
     setSuccess(false);
 
     if (newPassword.length < 8) {
-      setError('New password must be at least 8 characters long');
+      setError('The new password needs at least 8 characters.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('New passwords do not match');
+      setError('The two new passwords are not the same.');
       return;
     }
 
@@ -40,15 +40,14 @@ export default function PasswordResetModal({ isOpen, onClose }) {
         setSuccess(false);
       }, 1500);
     } catch (err) {
-      console.warn('API password change error, simulating success for demo user:', err.message);
-      setSuccess(true);
-      setTimeout(() => {
-        onClose();
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-        setSuccess(false);
-      }, 1500);
+      // Never pretend it worked: tell the person what happened.
+      if (err?.details?.isNetworkError) {
+        setError("The password can't be changed right now because the sign-in server isn't running. Nothing was changed.");
+      } else if (err?.status === 401 || err?.status === 400) {
+        setError('Your current password is not right. Nothing was changed.');
+      } else {
+        setError(`Could not change the password: ${err.message}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -58,8 +57,8 @@ export default function PasswordResetModal({ isOpen, onClose }) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Change Admin Password"
-      subtitle="Update your credentials for the STRATEGY Control Center"
+      title="Change password"
+      subtitle="Choose a new password with at least 8 characters."
       maxWidth="max-w-md"
     >
       {success ? (
@@ -78,7 +77,7 @@ export default function PasswordResetModal({ isOpen, onClose }) {
           )}
 
           <TextInput
-            label="Current Password"
+            label="Current password"
             type="password"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
@@ -88,7 +87,7 @@ export default function PasswordResetModal({ isOpen, onClose }) {
           />
 
           <TextInput
-            label="New Password"
+            label="New password"
             type="password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
@@ -99,7 +98,7 @@ export default function PasswordResetModal({ isOpen, onClose }) {
           />
 
           <TextInput
-            label="Confirm New Password"
+            label="Type the new password again"
             type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}

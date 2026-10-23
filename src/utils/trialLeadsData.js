@@ -33,7 +33,13 @@ export function saveTrialLead(category, formData) {
     ...formData,
   };
   leads.unshift(newLead); // newest first
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+  } catch (e) {
+    // Storage full: don't break the booking form for the visitor
+    console.error('Could not store trial lead:', e);
+    return { ...newLead, saved: false };
+  }
 
   // Dispatch event so admin panel can react
   window.dispatchEvent(new CustomEvent('strategy_trial_lead_added', { detail: newLead }));
@@ -48,9 +54,33 @@ export function updateLeadStatus(leadId, newStatus) {
   const idx = leads.findIndex((l) => l.id === leadId);
   if (idx !== -1) {
     leads[idx].status = newStatus;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+    } catch (e) {
+      console.error('Could not update trial lead:', e);
+      return null;
+    }
+    window.dispatchEvent(new CustomEvent('strategy_trial_leads_changed'));
   }
   return leads;
+}
+
+/**
+ * Update any fields of a lead (e.g. mark the trial fee as paid)
+ */
+export function updateTrialLead(leadId, patch) {
+  const leads = getAllTrialLeads();
+  const idx = leads.findIndex((l) => l.id === leadId);
+  if (idx === -1) return null;
+  leads[idx] = { ...leads[idx], ...patch };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+    window.dispatchEvent(new CustomEvent('strategy_trial_leads_changed'));
+  } catch (e) {
+    console.error('Could not update trial lead:', e);
+    return null;
+  }
+  return leads[idx];
 }
 
 /**
@@ -60,6 +90,7 @@ export function deleteTrialLead(leadId) {
   let leads = getAllTrialLeads();
   leads = leads.filter((l) => l.id !== leadId);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+  window.dispatchEvent(new CustomEvent('strategy_trial_leads_changed'));
   return leads;
 }
 
@@ -72,7 +103,12 @@ export function addLeadNote(leadId, note) {
   if (idx !== -1) {
     if (!leads[idx].notes) leads[idx].notes = [];
     leads[idx].notes.push({ text: note, createdAt: new Date().toISOString() });
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+    } catch (e) {
+      console.error('Could not save note:', e);
+      return null;
+    }
   }
   return leads;
 }

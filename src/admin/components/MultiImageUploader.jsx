@@ -11,9 +11,11 @@ import {
   Loader2,
   Sparkles,
   Check,
-  Trash2
+  Trash2,
+  Crop
 } from 'lucide-react';
 import { adminApi } from '../services/adminApi';
+import ImageCropper, { readFileAsDataUrl, storeCroppedImage } from './ImageCropper';
 
 const PRODUCT_IMAGE_PRESETS = [
   { label: '🏀 Strategy Pro Basketball', url: '/images/strategy_basketball_ball.jpg' },
@@ -42,45 +44,82 @@ export default function MultiImageUploader({
   const currentImages = Array.isArray(images) ? images.filter(Boolean) : [];
   const remainingSlots = Math.max(0, maxImages - currentImages.length);
 
-  // File upload handler (supports multiple files at once)
+  // Crop queue: every new photo opens the crop window, one after another
+  const [queue, setQueue] = useState([]); // [{ src, file }]
+  const [queueTotal, setQueueTotal] = useState(0);
+  const [recropIndex, setRecropIndex] = useState(null); // cropping a photo that is already added
+  const doneRef = useRef([]); // results collected while working through the queue
+
   const handleFiles = async (files) => {
     if (!files || files.length === 0 || remainingSlots <= 0) return;
-
+    const picked = Array.from(files)
+      .filter((f) => f.type?.startsWith('image/'))
+      .slice(0, remainingSlots);
+    if (!picked.length) return;
     setLoading(true);
-    const filesToUpload = Array.from(files).slice(0, remainingSlots);
-    const uploadedUrls = [];
-
-    for (const file of filesToUpload) {
+    const items = [];
+    for (const file of picked) {
       try {
-        // Try backend upload
-        const res = await adminApi.uploadFile(file);
-        if (res && res.url) {
-          uploadedUrls.push(res.url);
-          continue;
-        }
-      } catch (err) {
-        console.warn('Backend file upload fallback to FileReader:', err.message);
+        items.push({ src: await readFileAsDataUrl(file), file });
+      } catch {
+        // unreadable file – skip it
       }
-
-      // Local FileReader fallback for immediate client preview
-      await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            uploadedUrls.push(e.target.result);
-          }
-          resolve();
-        };
-        reader.onerror = () => resolve();
-        reader.readAsDataURL(file);
-      });
     }
-
     setLoading(false);
-    if (uploadedUrls.length > 0) {
-      const updated = [...currentImages, ...uploadedUrls].slice(0, maxImages);
-      onChange(updated);
+    doneRef.current = [];
+    setQueueTotal(items.length);
+    setQueue(items);
+  };
+
+  // Move on to the next photo; when the queue is empty, add everything that was finished
+  const nextInQueue = (resultUrl) => {
+    if (resultUrl) doneRef.current.push(resultUrl);
+    const rest = queue.slice(1);
+    if (rest.length === 0 && doneRef.current.length) {
+      onChange([...currentImages, ...doneRef.current].slice(0, maxImages));
+      doneRef.current = [];
     }
+    setQueue(rest);
+  };
+
+  const handleQueueCropped = async (dataUrl) => {
+    const name = queue[0]?.file?.name;
+    setLoading(true);
+    const url = await storeCroppedImage(dataUrl, name);
+    setLoading(false);
+    nextInQueue(url);
+  };
+
+  // "Use the full photo": upload the original file as before
+  const handleQueueSkip = async () => {
+    const file = queue[0]?.file;
+    setLoading(true);
+    let url = null;
+    try {
+      const res = await adminApi.uploadFile(file);
+      url = res?.url || null;
+    } catch {
+      // server offline
+    }
+    if (!url) url = queue[0]?.src || null;
+    setLoading(false);
+    nextInQueue(url);
+  };
+
+  const cancelQueue = () => {
+    // keep the photos already cropped, drop the rest
+    if (doneRef.current.length) onChange([...currentImages, ...doneRef.current].slice(0, maxImages));
+    doneRef.current = [];
+    setQueue([]);
+  };
+
+  const handleRecropped = async (dataUrl) => {
+    const idx = recropIndex;
+    setRecropIndex(null);
+    setLoading(true);
+    const url = await storeCroppedImage(dataUrl, `photo-${idx + 1}.jpg`);
+    setLoading(false);
+    onChange(currentImages.map((img, i) => (i === idx ? url : img)));
   };
 
   const handleDrop = (e) => {
@@ -283,6 +322,14 @@ export default function MultiImageUploader({
                 <div className="flex justify-end gap-1">
                   <button
                     type="button"
+                    onClick={() => setRecropIndex(idx)}
+                    className="px-1.5 py-1 rounded-md bg-white text-zinc-900 hover:bg-zinc-100 transition flex items-center gap-1 text-[10px] font-bold"
+                    title="Crop this photo"
+                  >
+                    <Crop className="w-3 h-3" /> Crop
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => handleRemoveImage(idx)}
                     className="p-1 rounded-md bg-rose-600 text-white hover:bg-rose-700 transition"
                     title="Remove Image"
@@ -369,6 +416,29 @@ export default function MultiImageUploader({
           <Check className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
           <span>Maximum limit of 6 product images reached. Remove an image to add a new one.</span>
         </p>
+      )}
+      {queue.length > 0 && (
+        <ImageCropper
+          key={queue[0].src.slice(-40) + queue.length}
+          src={queue[0].src}
+          shape="square"
+          shapes={['square', 'portrait', 'landscape', 'original']}
+          title={queueTotal > 1 ? `Crop photo ${queueTotal - queue.length + 1} of ${queueTotal}` : 'Crop photo'}
+          doneLabel={queue.length > 1 ? 'Crop & next photo' : 'Use this crop'}
+          onDone={handleQueueCropped}
+          onSkip={handleQueueSkip}
+          onCancel={cancelQueue}
+        />
+      )}
+
+      {recropIndex !== null && currentImages[recropIndex] && (
+        <ImageCropper
+          src={currentImages[recropIndex]}
+          shape="square"
+          shapes={['square', 'portrait', 'landscape', 'original']}
+          onDone={handleRecropped}
+          onCancel={() => setRecropIndex(null)}
+        />
       )}
     </div>
   );
