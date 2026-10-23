@@ -9,14 +9,14 @@
  *        https://strategyaccademy.netlify.app/thank-you
  *    (use your own domain instead if the website moves).
  */
-export const TRIAL_PAYMENT_LINK = '';
+export const TRIAL_PAYMENT_LINK = 'https://business.strategyacademy.vip/payment-link/6adb4fbaef1f4f0eb024e800';
 
 /**
  * Your team's WhatsApp number: country code + number, digits only, no + or spaces.
  * Example for 050 123 4567 in the UAE: '971501234567'
  * (The thank-you page's "Chat with our team" button opens WhatsApp to this number.)
  */
-export const TEAM_WHATSAPP_NUMBER = '971501234567';
+export const TEAM_WHATSAPP_NUMBER = '507349311';
 
 /** Builds the address the visitor is sent to, adding booking details where the provider supports it. */
 export function buildTrialPaymentUrl(link, { bookingId, email } = {}) {
